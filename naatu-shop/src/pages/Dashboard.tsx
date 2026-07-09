@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState, useMemo, useRef, type FormEvent } from 'react'
+﻿import React, { useCallback, useEffect, useState, useMemo, useRef, type FormEvent } from 'react'
 import {
   BarChart2, Trash2, Edit2, List, ShoppingCart, LayoutDashboard,
   Box, AlertCircle, ArrowUp, ArrowDown, Power, Download, TrendingUp,
@@ -1305,7 +1305,7 @@ export default function Dashboard() {
                             const nm = String(it.name || it.product_name || 'Product')
                             const qty = toNumber(it.quantity ?? it.qty, 0)
                             const lt = toNumber(it.line_total ?? it.lineTotal, 0)
-                            return `- ${nm} Ã— ${qty} - ${formatCurrency(lt)}`
+                            return `- ${nm} x ${qty} - ${formatCurrency(lt)}`
                           }),
                           '',
                           `ðŸ’° *${l('Estimated Total', 'à®®à®¤à®¿à®ªà¯à®ªà®¿à®Ÿà¯à®Ÿà¯')}: ${formatCurrency(toNumber(order.total, 0))}*`,
@@ -1465,7 +1465,7 @@ export default function Dashboard() {
                       <div key={item.name} className="flex items-center gap-2">
                         <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 text-[9px] font-black flex items-center justify-center shrink-0">{i + 1}</span>
                         <span className="text-[11px] font-bold text-[#2C392A] truncate flex-1">{item.name}</span>
-                        <span className="text-[11px] font-black text-blue-600 shrink-0">{item.count}Ã—</span>
+                        <span className="text-[11px] font-black text-blue-600 shrink-0">{item.count}x</span>
                       </div>
                     ))}
                   </div>
@@ -1483,7 +1483,7 @@ export default function Dashboard() {
                       <div key={cat.name} className="flex items-center gap-2">
                         <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 text-[9px] font-black flex items-center justify-center shrink-0">{i + 1}</span>
                         <span className="text-[11px] font-bold text-[#2C392A] truncate flex-1">{cat.name}</span>
-                        <span className="text-[11px] font-black text-emerald-600 shrink-0">{cat.count}Ã—</span>
+                        <span className="text-[11px] font-black text-emerald-600 shrink-0">{cat.count}x</span>
                       </div>
                     ))}
                   </div>
@@ -2063,7 +2063,7 @@ export default function Dashboard() {
                         const sel = cats.find(c => c.name_en === e.target.value)
                         setProdForm(f => ({ ...f, category: e.target.value, categoryId: sel?.id || null }))
                       }}>
-                      <option value="">{l('Select categoryâ€¦', 'à®µà®•à¯ˆ à®¤à¯‡à®°à¯à®µà¯ à®šà¯†à®¯à¯à®¯à¯à®™à¯à®•à®³à¯â€¦')}</option>
+                      <option value="">{l('Select category...', 'à®µà®•à¯ˆ à®¤à¯‡à®°à¯à®µà¯ à®šà¯†à®¯à¯à®¯à¯à®™à¯à®•à®³à¯...')}</option>
                       {cats.map(c => <option key={c.id} value={c.name_en}>{c.name_en}</option>)}
                     </select>
                   </div>
@@ -2086,7 +2086,7 @@ export default function Dashboard() {
                 <div>
                   <label className="block text-[11px] font-black uppercase text-[#6B7280] tracking-wider mb-1">{l('Description', 'à®µà®¿à®³à®•à¯à®•à®®à¯')}</label>
                   <textarea rows={2} className="w-full px-4 py-2.5 bg-[#FAFAFA] border border-[#F3F4F6] focus:border-maroon-dark rounded-xl text-[13px] font-bold outline-none transition-colors resize-none"
-                    placeholder="Short product descriptionâ€¦" value={prodForm.description}
+                    placeholder="Short product description..." value={prodForm.description}
                     onChange={e => setProdForm(f => ({...f, description: e.target.value}))} />
                 </div>
 
@@ -2107,7 +2107,7 @@ export default function Dashboard() {
                   <input type="file" accept="image/*"
                     className="w-full px-4 py-2 bg-[#FAFAFA] border border-[#F3F4F6] rounded-xl text-[12px] text-[#6B7280]"
                     onChange={e => void handleUploadImage(e.target.files?.[0])} />
-                  {imageUploading && <p className="text-[12px] text-maroon-dark font-bold">{l('Uploading imageâ€¦', 'à®ªà®Ÿà®®à¯ à®ªà®¤à®¿à®µà¯‡à®±à¯à®±à¯à®•à®¿à®±à®¤à¯â€¦')}</p>}
+                  {imageUploading && <p className="text-[12px] text-maroon-dark font-bold">{l('Uploading image...', 'à®ªà®Ÿà®®à¯ à®ªà®¤à®¿à®µà¯‡à®±à¯à®±à¯à®•à®¿à®±à®¤à¯...')}</p>}
                   {prodForm.image && (
                     <div className="w-20 h-20 rounded-xl overflow-hidden bg-[#FAFAFA] border border-borderLight shadow-sm">
                       <img src={prodForm.image} alt="preview" className="w-full h-full object-cover" />
@@ -2136,7 +2136,7 @@ export default function Dashboard() {
                 <div className="flex gap-3 pt-3 border-t border-borderLight">
                   <button type="submit" disabled={loading}
                     className="flex-grow py-3 bg-maroon-dark hover:bg-[#721528] text-white font-black rounded-xl disabled:opacity-60 transition-colors shadow-sm text-[13px]">
-                    {loading ? l('Savingâ€¦','à®šà¯‡à®®à®¿à®•à¯à®•à®¿à®±à®¤à¯â€¦') : editingProd ? l('Update Product','à®ªà¯à®¤à¯à®ªà¯à®ªà®¿') : l('Add Product','à®šà¯‡à®°à¯à®•à¯à®•à®µà¯à®®à¯')}
+                    {loading ? l('Saving...','à®šà¯‡à®®à®¿à®•à¯à®•à®¿à®±à®¤à¯...') : editingProd ? l('Update Product','à®ªà¯à®¤à¯à®ªà¯à®ªà®¿') : l('Add Product','à®šà¯‡à®°à¯à®•à¯à®•à®µà¯à®®à¯')}
                   </button>
                   <button type="button" onClick={() => { setEditingProd(null); setProdForm(emptyForm); setProductNotice('') }}
                     className="px-6 py-3 bg-[#F3F4F6] text-[#111111] font-bold rounded-xl hover:bg-[#E5E7EB] transition-colors text-[13px]">
@@ -2179,8 +2179,8 @@ export default function Dashboard() {
                     </thead>
                     <tbody className="text-[14px] divide-y divide-[#F3F4F6] bg-white">
                       {products.filter(p => !inventorySearch || p.name.toLowerCase().includes(inventorySearch.toLowerCase()) || p.tamilName?.toLowerCase().includes(inventorySearch.toLowerCase()) || p.category?.toLowerCase().includes(inventorySearch.toLowerCase())).map(p => (
-                        <tr key={p.id} className={`hover:bg-[#FAFAFA] transition-colors ${!p.isActive ? 'opacity-60' : ''}`}>
-                          <td className="px-6 py-4">
+                        <tr key={p.id} className={`hover:bg-[#FAFAFA] transition-colors cursor-pointer ${!p.isActive ? 'opacity-60' : ''}`}>
+                          <td className="px-6 py-4" onClick={() => handleEdit(p)}>
                             <div className="flex items-center gap-4">
                               <div className="w-10 h-10 rounded-xl overflow-hidden bg-[#FAFAFA] border border-[#F3F4F6] shrink-0 shadow-sm">
                                 <img src={p.image || p.imageUrl || ''} alt={p.name}
@@ -2210,13 +2210,13 @@ export default function Dashboard() {
                           <td className="px-4 py-4 font-bold text-[#111111]">{formatCurrency(p.price)}</td>
                           <td className="px-6 py-4 text-right">
                             <div className="flex items-center justify-end gap-2">
-                              <button onClick={() => handleEdit(p)} className="p-2 text-[#6B7280] hover:text-maroon-dark hover:bg-maroon-dark/5 rounded-lg transition-colors shadow-sm bg-white border border-[#F3F4F6]">
+                              <button onClick={() => handleEdit(p)} title="Edit product" className="p-2 text-[#6B7280] hover:text-maroon-dark hover:bg-maroon-dark/5 rounded-lg transition-colors shadow-sm bg-white border border-[#F3F4F6]">
                                 <Edit2 size={16} />
                               </button>
-                              <button onClick={() => void handleToggleActive(p)} className={`p-2 rounded-lg transition-colors shadow-sm bg-white border border-[#F3F4F6] ${p.isActive ? 'text-amber-500 hover:bg-amber-50' : 'text-green-600 hover:bg-green-50'}`}>
+                              <button onClick={() => void handleToggleActive(p)} title={p.isActive ? 'Deactivate' : 'Activate'} className={`p-2 rounded-lg transition-colors shadow-sm bg-white border border-[#F3F4F6] ${p.isActive ? 'text-amber-500 hover:bg-amber-50' : 'text-green-600 hover:bg-green-50'}`}>
                                 <Power size={16} />
                               </button>
-                              <button onClick={() => void handleDeleteProd(p.id)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors shadow-sm bg-white border border-[#F3F4F6]">
+                              <button onClick={() => void handleDeleteProd(p.id)} title="Delete product" className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors shadow-sm bg-white border border-[#F3F4F6]">
                                 <Trash2 size={16} />
                               </button>
                             </div>
@@ -2352,7 +2352,7 @@ export default function Dashboard() {
                     <div className="flex gap-3 pt-2">
                       <button type="submit" disabled={variantLoading}
                         className="flex-grow py-3 bg-[#111111] hover:bg-[#333333] text-white font-black text-[13px] rounded-xl disabled:opacity-60 transition-colors shadow-sm">
-                        {variantLoading ? l('Savingâ€¦', 'à®šà¯‡à®®à®¿à®•à¯à®•à®¿à®±à®¤à¯â€¦') : editingVariantId ? l('Update Variant', 'à®ªà¯à®¤à¯à®ªà¯à®ªà®¿') : l('Add Variant', 'à®šà¯‡à®°à¯')}
+                        {variantLoading ? l('Saving...', 'à®šà¯‡à®®à®¿à®•à¯à®•à®¿à®±à®¤à¯...') : editingVariantId ? l('Update Variant', 'à®ªà¯à®¤à¯à®ªà¯à®ªà®¿') : l('Add Variant', 'à®šà¯‡à®°à¯')}
                       </button>
                       {editingVariantId && (
                         <button type="button"
@@ -2715,7 +2715,7 @@ export default function Dashboard() {
               <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#6B7280]" />
               <input
                 className="w-full pl-11 pr-4 py-3 bg-white border border-[#D1D5DB] rounded-xl text-[13px] font-bold text-[#111111] placeholder-[#6B7280] focus:outline-none focus:border-maroon-dark transition-colors shadow-sm"
-                placeholder={l('Search by name or emailâ€¦', 'à®ªà¯†à®¯à®°à¯ à®…à®²à¯à®²à®¤à¯ à®®à®¿à®©à¯à®©à®žà¯à®šà®²à®¾à®²à¯ à®¤à¯‡à®Ÿà¯à®•â€¦')}
+                placeholder={l('Search by name or email...', 'à®ªà¯†à®¯à®°à¯ à®…à®²à¯à®²à®¤à¯ à®®à®¿à®©à¯à®©à®žà¯à®šà®²à®¾à®²à¯ à®¤à¯‡à®Ÿà¯à®•...')}
                 value={userSearch}
                 onChange={e => setUserSearch(e.target.value)}
               />
@@ -2729,7 +2729,7 @@ export default function Dashboard() {
 
             <div className="bg-white rounded-2xl border border-borderLight shadow-sm overflow-hidden">
               {usersLoading ? (
-                <div className="p-10 text-center text-[13px] font-bold text-[#6B7280]">{l('Loading usersâ€¦', 'à®ªà®¯à®©à®°à¯à®•à®³à¯ à®à®±à¯à®±à¯à®•à®¿à®±à®¤à¯â€¦')}</div>
+                <div className="p-10 text-center text-[13px] font-bold text-[#6B7280]">{l('Loading users...', 'à®ªà®¯à®©à®°à¯à®•à®³à¯ à®à®±à¯à®±à¯à®•à®¿à®±à®¤à¯...')}</div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-[14px]">
