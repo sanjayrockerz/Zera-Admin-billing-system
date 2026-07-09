@@ -298,14 +298,6 @@ export default function Dashboard() {
       return { hour: `${h12} ${ampm}`, key: h, qty: productHourlyMap.get(h) || 0 }
     })
 
-    // Average items per bill
-    const avgItemsPerBill = billableCompleted.length > 0
-      ? totalProductsSold / billableCompleted.length : 0
-
-    // Category distribution for chart
-    const categoryDist = Array.from(categoryMap.entries()).sort((a, b) => b[1].revenue - a[1].revenue).slice(0, 8)
-      .map(([name, data]) => ({ name, value: data.revenue }))
-
     const monthlyRevenue = billableCompleted.filter(o => toLocalMonthKey(o.created_at) === monthKey).reduce((s, o) => s + toNumber(o.total, 0), 0)
 
     // Item-level analytics
@@ -359,6 +351,14 @@ export default function Dashboard() {
     const topCategories = Array.from(categoryMap.values()).sort((a, b) => b.revenue - a.revenue)
     const bestProduct   = topProducts[0]?.name || 'No sales yet'
     const bestCategory  = topCategories[0]?.name || 'No sales yet'
+
+    // Average items per bill
+    const avgItemsPerBill = billableCompleted.length > 0
+      ? totalProductsSold / billableCompleted.length : 0
+
+    // Category distribution for chart
+    const categoryDist = Array.from(categoryMap.entries()).sort((a, b) => b[1].revenue - a[1].revenue).slice(0, 8)
+      .map(([name, data]) => ({ name, value: data.revenue }))
 
     // Trend charts
     const monthlyRevenueMap = new Map<string, number>()
