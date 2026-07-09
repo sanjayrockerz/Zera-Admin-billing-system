@@ -919,12 +919,10 @@ export default function Dashboard() {
         {/* Desktop brand header */}
         <div className={`hidden lg:flex items-center relative transition-all duration-300 ${sidebarCollapsed ? 'justify-center pt-6 pb-5 px-2' : 'px-5 py-5'}`}>
           <div className={`flex items-center gap-3 min-w-0 transition-all duration-300 ${sidebarCollapsed ? 'w-0 opacity-0 overflow-hidden' : 'opacity-100 flex-1'}`}>
-            <div className="flex items-center justify-center shrink-0 w-11 h-11 rounded-[14px] border border-[#EAD7B7] bg-white shadow-[0_4px_12px_rgba(17,24,39,0.10)]">
-              <div className="flex h-[70%] w-[70%] items-center justify-center rounded-[10px] bg-[#FCFBF7]">
-                <img src="/zera-logo.png" alt="Logo" className="w-full h-full object-contain" />
-              </div>
+            <div className="flex items-center justify-center shrink-0 w-12 h-12 rounded-xl bg-white shadow-[0_4px_12px_rgba(17,24,39,0.10)] overflow-hidden">
+              <img src="/zera-logo.png" alt="Logo" className="w-full h-full object-cover scale-[1.8]" />
             </div>
-            <h1 className="text-[17px] font-black text-white truncate tracking-tight">ZERA</h1>
+            <h1 className="text-[20px] font-black text-white truncate tracking-tight">ZERA</h1>
           </div>
           <button
             type="button"
@@ -939,10 +937,10 @@ export default function Dashboard() {
         {/* Mobile mini-header */}
         <div className="flex lg:hidden items-center justify-between px-4 py-3 border-b border-white/10">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#EAD7B7] bg-white shrink-0 overflow-hidden shadow-sm">
-              <img src="/zera-logo.png" alt="Logo" className="w-full h-full object-contain p-1" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white shrink-0 overflow-hidden shadow-sm">
+              <img src="/zera-logo.png" alt="Logo" className="w-full h-full object-cover scale-[1.8]" />
             </div>
-            <span className="text-[13px] font-bold text-white truncate">ZERA</span>
+            <span className="text-[15px] font-black text-white truncate">ZERA</span>
           </div>
         </div>
         {/* Nav */}
