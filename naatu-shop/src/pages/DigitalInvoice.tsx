@@ -94,7 +94,8 @@ export default function DigitalInvoice() {
                 })),
                 subtotal: subtotal,
                 shipping: invoice.delivery_charge || 0,
-                discountAmount: invoice.discount_amount || 0,
+                couponDiscount: invoice.discount_amount || 0,
+                totalGst: invoice.total_gst || 0,
                 total: invoice.total
               })
             }}
