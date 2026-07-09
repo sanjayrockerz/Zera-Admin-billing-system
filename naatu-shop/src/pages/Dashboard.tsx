@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState, useMemo, useRef, type FormEven
 import {
   BarChart2, Trash2, Edit2, List, ShoppingCart, LayoutDashboard,
   Box, AlertCircle, ArrowUp, ArrowDown, Power, Download, TrendingUp,
-  Package, IndianRupee, Search, RefreshCw, Users, ShieldCheck, ShieldOff, Trophy,
+  Package, IndianRupee, Search, RefreshCw, ShieldCheck, ShieldOff, Trophy,
   MessageCircle, ChevronDown,
 } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
@@ -341,7 +341,7 @@ export default function Dashboard() {
     })
     const topCoupons = Array.from(couponMap.values()).sort((a, b) => b.usage - a.usage)
 
-    // WhatsApp analytics (zero revenue â€” status changes never affect revenue)
+    // WhatsApp analytics (zero revenue - status changes never affect revenue)
     const waRequests  = waOrders.length
     const waPending   = waOrders.filter(o => normalizeStatus(o.status) === 'pending').length
     const waContacted = waOrders.filter(o => normalizeStatus(o.status) === 'contacted').length
@@ -548,11 +548,11 @@ export default function Dashboard() {
     }
     let error: unknown = null
     if (editingCouponId !== null) {
-      // Update existing â€” don't change code (it's the PK equivalent)
+      // Update existing - don't change code (it's the PK equivalent)
       const res = await supabase.from('coupons').update({ ...payload }).eq('id', editingCouponId)
       error = res.error
     } else {
-      // Insert new coupon â€” UNIQUE constraint on code catches duplicates
+      // Insert new coupon - UNIQUE constraint on code catches duplicates
       const res = await supabase.from('coupons').insert(payload)
       error = res.error
     }
@@ -661,7 +661,7 @@ export default function Dashboard() {
     }
   }
 
-  // Order search â€” POS bills only (online_request excluded)
+  // Order search - POS bills only (online_request excluded)
   const runSearch = async (e?: FormEvent) => {
     e?.preventDefault()
     setSearchLoading(true)
@@ -904,7 +904,6 @@ export default function Dashboard() {
     { id: 'history',       icon: <List size={20} />,             label: 'Order History' },
     { id: 'pos_analytics', icon: <BarChart2 size={20} />,        label: 'Analytics Dashboard' },
     { id: 'coupons',       icon: <Box size={20} />,              label: 'Coupons' },
-    { id: 'users',         icon: <Users size={20} />,            label: 'Customers' },
   ]
 
   return (
@@ -918,35 +917,24 @@ export default function Dashboard() {
         ].join(' ')}
       >
         {/* Desktop brand header */}
-        <div className={`hidden lg:flex flex-col items-center relative transition-all duration-300 ${sidebarCollapsed ? 'pt-6 pb-5 px-4' : 'pt-8 pb-6 px-6'}`}>
-          <div className={`flex items-center justify-center shrink-0 rounded-[22px] border border-[#EAD7B7] bg-white shadow-[0_10px_28px_rgba(17,24,39,0.12)] transition-all duration-300 ${sidebarCollapsed ? 'w-11 h-11 mb-2' : 'w-20 h-20 mb-3'}`}>
-            <div className="flex h-[72%] w-[72%] items-center justify-center rounded-[18px] bg-[#FCFBF7] ring-1 ring-[#F2E7D2]">
-              <img src="/zera-logo.png" alt="Logo" className={`${sidebarCollapsed ? 'w-6 h-6' : 'w-12 h-12'} object-contain`} />
+        <div className={`hidden lg:flex items-center relative transition-all duration-300 ${sidebarCollapsed ? 'justify-center pt-6 pb-5 px-2' : 'px-5 py-5'}`}>
+          <div className={`flex items-center gap-3 min-w-0 transition-all duration-300 ${sidebarCollapsed ? 'w-0 opacity-0 overflow-hidden' : 'opacity-100 flex-1'}`}>
+            <div className="flex items-center justify-center shrink-0 w-11 h-11 rounded-[14px] border border-[#EAD7B7] bg-white shadow-[0_4px_12px_rgba(17,24,39,0.10)]">
+              <div className="flex h-[70%] w-[70%] items-center justify-center rounded-[10px] bg-[#FCFBF7]">
+                <img src="/zera-logo.png" alt="Logo" className="w-full h-full object-contain" />
+              </div>
             </div>
-          </div>
-          <div className={`min-w-0 transition-all duration-200 flex flex-col items-center ${sidebarCollapsed ? 'w-0 opacity-0 overflow-hidden h-0' : 'opacity-100 w-full'}`}>
-            <h1 className="text-[16px] font-bold text-white truncate w-full text-center">ZERA</h1>
+            <h1 className="text-[17px] font-black text-white truncate tracking-tight">ZERA</h1>
           </div>
           <button
             type="button"
             onClick={() => setSidebarCollapsed((state) => !state)}
-            className={`absolute top-4 right-4 flex h-8 w-8 items-center justify-center rounded-xl bg-white/10 text-white/80 hover:bg-white/15 hover:text-white transition-colors ${sidebarCollapsed ? 'hidden' : 'flex'}`}
+            className={`flex h-8 w-8 items-center justify-center rounded-xl bg-white/10 text-white/80 hover:bg-white/15 hover:text-white transition-colors shrink-0 ${sidebarCollapsed ? '' : ''}`}
             aria-label="Collapse sidebar"
             title="Collapse sidebar"
           >
-            <ChevronDown size={16} className="rotate-90 transition-transform duration-300" />
+            <ChevronDown size={16} className={`transition-transform duration-300 ${sidebarCollapsed ? '-rotate-90' : 'rotate-90'}`} />
           </button>
-          {sidebarCollapsed && (
-            <button
-              type="button"
-              onClick={() => setSidebarCollapsed((state) => !state)}
-              className="mt-3 flex h-8 w-8 items-center justify-center rounded-xl bg-white/10 text-white/80 hover:bg-white/15 hover:text-white transition-colors"
-              aria-label="Expand sidebar"
-              title="Expand sidebar"
-            >
-              <ChevronDown size={16} className="-rotate-90 transition-transform duration-300" />
-            </button>
-          )}
         </div>
         {/* Mobile mini-header */}
         <div className="flex lg:hidden items-center justify-between px-4 py-3 border-b border-white/10">
@@ -1040,7 +1028,7 @@ export default function Dashboard() {
             {analyticsTab === 'revenue' && (
               <>
 
-            {/* Revenue KPIs â€” 5 cards */}
+            {/* Revenue KPIs - 5 cards */}
             <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
               {[
                 { label: l('Total Revenue', 'à®®à¯Šà®¤à¯à®¤ à®µà®°à¯à®µà®¾à®¯à¯'),    value: formatCurrency(analytics.totalCompletedRevenue), bg: 'bg-emerald-50', color: 'text-emerald-700', icon: <IndianRupee size={16} /> },
@@ -1084,7 +1072,7 @@ export default function Dashboard() {
                         const btClass = normalizeOrderType(o.order_type) === 'manual_sale' ? 'bg-purple-100 text-purple-700' : normalizeOrderMode(o.order_mode) === 'online' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'
                         return (
                           <tr key={o.id} className="hover:bg-[#F7F6F2]/50">
-                            <td className="px-3 py-2.5 font-bold text-[#7DAA8F] text-[11px]">{o.invoice_no || 'â€”'}</td>
+                            <td className="px-3 py-2.5 font-bold text-[#7DAA8F] text-[11px]">{o.invoice_no || '-'}</td>
                             <td className="px-3 py-2.5 font-semibold text-[#2C392A] max-w-[100px] truncate">{o.customer_name}</td>
                             <td className="px-3 py-2.5 font-black text-[#2C392A]">{formatCurrency(toNumber(o.total, 0))}</td>
                             <td className="px-3 py-2.5 text-[#7A846F] whitespace-nowrap">{new Date(o.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</td>
@@ -1273,13 +1261,13 @@ export default function Dashboard() {
               ))}
             </div>
 
-            {/* â•â•â• CUSTOMER REQUEST MANAGEMENT â€” PRIMARY SECTION â•â•â• */}
+            {/* â•â•â• CUSTOMER REQUEST MANAGEMENT - PRIMARY SECTION â•â•â• */}
             <div className="bg-white rounded-2xl border border-blue-200 shadow-sm">
               <div className="flex items-center justify-between px-5 py-4 border-b border-blue-100">
                 <div className="flex items-center gap-2">
                   <MessageCircle size={17} className="text-blue-600" />
                   <h3 className="text-base font-black text-[#2C392A]">{l('Customer Requests', 'à®µà®¾à®Ÿà®¿à®•à¯à®•à¯ˆà®¯à®¾à®³à®°à¯ à®•à¯‹à®°à®¿à®•à¯à®•à¯ˆà®•à®³à¯')}</h3>
-                  <span className="text-[10px] font-bold text-[#9BAB9A] bg-[#F7F6F2] px-2 py-0.5 rounded-full">{l('â‚¹0 revenue â€” status updates only', 'â‚¹0 à®µà®°à¯à®µà®¾à®¯à¯ â€” à®¨à®¿à®²à¯ˆ à®®à®Ÿà¯à®Ÿà¯à®®à¯')}</span>
+                  <span className="text-[10px] font-bold text-[#9BAB9A] bg-[#F7F6F2] px-2 py-0.5 rounded-full">{l('â‚¹0 revenue - status updates only', 'â‚¹0 à®µà®°à¯à®µà®¾à®¯à¯ - à®¨à®¿à®²à¯ˆ à®®à®Ÿà¯à®Ÿà¯à®®à¯')}</span>
                 </div>
                 <span className="text-[12px] text-[#5F6D59] font-bold">{analytics.onlineRequestOrders.length} {l('requests', 'à®•à¯‹à®°à®¿à®•à¯à®•à¯ˆà®•à®³à¯')}</span>
               </div>
@@ -1306,9 +1294,9 @@ export default function Dashboard() {
 
                         // WhatsApp message text
                         const waMsg = [
-                          `ðŸŒ¿ *${l('Order Request', 'à®†à®°à¯à®Ÿà®°à¯ à®•à¯‹à®°à®¿à®•à¯à®•à¯ˆ')} â€” Naatu Marundhu*`,
-                          `ðŸ‘¤ ${order.customer_name || 'â€”'}`,
-                          `ðŸ“ž ${order.phone || 'â€”'}`,
+                          `ðŸŒ¿ *${l('Order Request', 'à®†à®°à¯à®Ÿà®°à¯ à®•à¯‹à®°à®¿à®•à¯à®•à¯ˆ')} - Naatu Marundhu*`,
+                          `ðŸ‘¤ ${order.customer_name || '-'}`,
+                          `ðŸ“ž ${order.phone || '-'}`,
                           order.address ? `ðŸ“ ${order.address}` : '',
                           '',
                           `ðŸ“¦ *${l('Items', 'à®ªà¯Šà®°à¯à®Ÿà¯à®•à®³à¯')}:*`,
@@ -1317,7 +1305,7 @@ export default function Dashboard() {
                             const nm = String(it.name || it.product_name || 'Product')
                             const qty = toNumber(it.quantity ?? it.qty, 0)
                             const lt = toNumber(it.line_total ?? it.lineTotal, 0)
-                            return `â€¢ ${nm} Ã— ${qty} â€” ${formatCurrency(lt)}`
+                            return `- ${nm} Ã— ${qty} - ${formatCurrency(lt)}`
                           }),
                           '',
                           `ðŸ’° *${l('Estimated Total', 'à®®à®¤à®¿à®ªà¯à®ªà®¿à®Ÿà¯à®Ÿà¯')}: ${formatCurrency(toNumber(order.total, 0))}*`,
@@ -1326,9 +1314,9 @@ export default function Dashboard() {
                         return (
                           <React.Fragment key={order.id}>
                             <tr className={`hover:bg-blue-50/40 align-middle ${isExpanded ? 'bg-blue-50/30' : ''}`}>
-                              <td className="px-4 py-3 font-bold text-[#2C392A] whitespace-nowrap">{order.customer_name || 'â€”'}</td>
-                              <td className="px-4 py-3 text-[#5F6D59] whitespace-nowrap">{order.phone || 'â€”'}</td>
-                              <td className="px-4 py-3 text-[#7A846F] max-w-[140px] truncate" title={order.address || 'â€”'}>{order.address || 'â€”'}</td>
+                              <td className="px-4 py-3 font-bold text-[#2C392A] whitespace-nowrap">{order.customer_name || '-'}</td>
+                              <td className="px-4 py-3 text-[#5F6D59] whitespace-nowrap">{order.phone || '-'}</td>
+                              <td className="px-4 py-3 text-[#7A846F] max-w-[140px] truncate" title={order.address || '-'}>{order.address || '-'}</td>
                               <td className="px-4 py-3 text-center">
                                 <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-100 text-blue-700 text-[11px] font-black">{its.length}</span>
                               </td>
@@ -1375,9 +1363,9 @@ export default function Dashboard() {
                                   <div className="space-y-4">
                                     {/* Customer info bar */}
                                     <div className="flex flex-wrap gap-4 text-[12px] bg-white rounded-xl p-3 border border-blue-100">
-                                      <div><span className="font-black text-[#5F6D59]">{l('Name', 'à®ªà¯†à®¯à®°à¯')}: </span><span className="font-bold text-[#2C392A]">{order.customer_name || 'â€”'}</span></div>
-                                      <div><span className="font-black text-[#5F6D59]">{l('Phone', 'à®¤à¯Šà®²à¯ˆà®ªà¯‡à®šà®¿')}: </span><span className="font-bold text-[#2C392A]">{order.phone || 'â€”'}</span></div>
-                                      <div className="flex-1"><span className="font-black text-[#5F6D59]">{l('Address', 'à®®à¯à®•à®µà®°à®¿')}: </span><span className="text-[#2C392A]">{order.address || 'â€”'}</span></div>
+                                      <div><span className="font-black text-[#5F6D59]">{l('Name', 'à®ªà¯†à®¯à®°à¯')}: </span><span className="font-bold text-[#2C392A]">{order.customer_name || '-'}</span></div>
+                                      <div><span className="font-black text-[#5F6D59]">{l('Phone', 'à®¤à¯Šà®²à¯ˆà®ªà¯‡à®šà®¿')}: </span><span className="font-bold text-[#2C392A]">{order.phone || '-'}</span></div>
+                                      <div className="flex-1"><span className="font-black text-[#5F6D59]">{l('Address', 'à®®à¯à®•à®µà®°à®¿')}: </span><span className="text-[#2C392A]">{order.address || '-'}</span></div>
                                     </div>
 
                                     {/* Items table */}
@@ -1400,7 +1388,7 @@ export default function Dashboard() {
                                               const fullName  = String(item.name || item.product_name || 'Product')
                                               const dashIdx   = fullName.indexOf(' - ')
                                               const prodName  = dashIdx > 0 ? fullName.slice(0, dashIdx) : fullName
-                                              const variant   = dashIdx > 0 ? fullName.slice(dashIdx + 3) : 'â€”'
+                                              const variant   = dashIdx > 0 ? fullName.slice(dashIdx + 3) : '-'
                                               const qty       = toNumber(item.quantity ?? item.qty, 0)
                                               const baseQty   = toNumber(item.base_quantity ?? item.baseQuantity, 1)
                                               const basePrice = toNumber(item.base_price ?? item.basePrice ?? item.price, 0)
@@ -1466,7 +1454,7 @@ export default function Dashboard() {
               )}
             </div>
 
-            {/* â”€â”€ ANALYTICS â€” secondary, compact, bottom â”€â”€ */}
+            {/* â”€â”€ ANALYTICS - secondary, compact, bottom â”€â”€ */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {/* Top Requested Products */}
               <div className="bg-white rounded-2xl border border-[#EAD7B7]/30 p-4 shadow-sm">
@@ -1504,7 +1492,7 @@ export default function Dashboard() {
                 )}
               </div>
 
-              {/* Status Distribution â€” compact bar */}
+              {/* Status Distribution - compact bar */}
               <div className="bg-white rounded-2xl border border-[#EAD7B7]/30 p-4 shadow-sm">
                 <h3 className="text-[13px] font-black text-[#2C392A] mb-3">{l('Status Distribution', 'à®¨à®¿à®²à¯ˆ à®µà®¿à®³à®•à¯à®•à®®à¯')}</h3>
                 <div className="h-36">
@@ -1763,7 +1751,7 @@ export default function Dashboard() {
                           <tr key={`${p.name}-${p.variant || i}`} className="hover:bg-[#F7F6F2]/50">
                             <td className="px-4 py-2 text-[11px] text-[#9BAB9A] font-bold">{i + 1}</td>
                             <td className="px-4 py-2 font-bold text-[#2C392A]">{p.name}</td>
-                            <td className="px-4 py-2 text-[#5F6D59]">{p.variant || 'â€”'}</td>
+                            <td className="px-4 py-2 text-[#5F6D59]">{p.variant || '-'}</td>
                             <td className="px-4 py-2 font-bold">{Math.round(p.qty)}</td>
                             <td className="px-4 py-2 font-bold text-emerald-700">{formatCurrency(p.revenue)}</td>
                             <td className="px-4 py-2 text-[#5F6D59]">{p.billCount}</td>
@@ -2241,12 +2229,12 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Variant Management Panel â€” shown when editing a variant product */}
+            {/* Variant Management Panel - shown when editing a variant product */}
             {editingProd && (
               <div className="xl:col-span-5 bg-white rounded-2xl border border-borderLight p-6 shadow-sm">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-[18px] font-black text-[#111111]">
-                    {l('Variants', 'à®µà®•à¯ˆà®•à®³à¯')} â€” <span className="text-[#6B7280]">{editingProd.name}</span>
+                    {l('Variants', 'à®µà®•à¯ˆà®•à®³à¯')} - <span className="text-[#6B7280]">{editingProd.name}</span>
                     {!editingProd.hasVariants && (
                       <span className="ml-3 text-[12px] font-bold text-amber-700 bg-amber-50 px-3 py-1 rounded-full">
                         {l('Enable "Has Variants" above to manage variants', '"à®µà®•à¯ˆà®•à®³à¯ à®‰à®³à¯à®³à®©" à®‡à®¯à®•à¯à®•à®µà¯à®®à¯')}
@@ -2344,7 +2332,7 @@ export default function Dashboard() {
                           className="w-full px-4 py-2.5 bg-white rounded-xl border border-[#D1D5DB] text-[13px] font-bold outline-none focus:border-maroon-dark transition-colors shadow-sm appearance-none"
                           value={variantForm.weightUnit}
                           onChange={e => setVariantForm(f => ({...f, weightUnit: e.target.value}))}>
-                          <option value="">â€”</option>
+                          <option value="">-</option>
                           <option value="g">g (grams)</option>
                           <option value="kg">kg</option>
                           <option value="ml">ml</option>
@@ -2383,7 +2371,7 @@ export default function Dashboard() {
                     </h4>
                     {getVariants(String(editingProd.id)).length === 0 ? (
                       <p className="text-[13px] text-[#6B7280] text-center py-8 bg-white border border-[#F3F4F6] rounded-xl">
-                        {l('No variants yet â€” add one using the form.', 'à®µà®•à¯ˆà®•à®³à¯ à®‡à®²à¯à®²à¯ˆ â€” à®ªà®Ÿà®¿à®µà®¤à¯à®¤à®¿à®²à¯ à®šà¯‡à®°à¯à®•à¯à®•à®µà¯à®®à¯.')}
+                        {l('No variants yet - add one using the form.', 'à®µà®•à¯ˆà®•à®³à¯ à®‡à®²à¯à®²à¯ˆ - à®ªà®Ÿà®¿à®µà®¤à¯à®¤à®¿à®²à¯ à®šà¯‡à®°à¯à®•à¯à®•à®µà¯à®®à¯.')}
                       </p>
                     ) : (
                       <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
@@ -2764,11 +2752,11 @@ export default function Dashboard() {
                         })
                         .map(u => (
                           <tr key={u.id} className="hover:bg-[#FAFAFA] transition-colors">
-                            <td className="px-6 py-4 font-bold text-[#111111]">{u.name || 'â€”'}</td>
-                            <td className="px-6 py-4 text-[#6B7280]">{u.email || 'â€”'}</td>
-                            <td className="px-6 py-4 text-[#6B7280]">{u.mobile || 'â€”'}</td>
+                            <td className="px-6 py-4 font-bold text-[#111111]">{u.name || '-'}</td>
+                            <td className="px-6 py-4 text-[#6B7280]">{u.email || '-'}</td>
+                            <td className="px-6 py-4 text-[#6B7280]">{u.mobile || '-'}</td>
                             <td className="px-6 py-4 text-[#6B7280] text-[12px]">
-                              {u.created_at ? new Date(u.created_at).toLocaleDateString('en-IN') : 'â€”'}
+                              {u.created_at ? new Date(u.created_at).toLocaleDateString('en-IN') : '-'}
                             </td>
                             <td className="px-6 py-4 text-center">
                               <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider ${
@@ -2809,7 +2797,7 @@ export default function Dashboard() {
             </div>
 
             <p className="text-[12px] text-[#6B7280] font-bold">
-              â€¢ {l('Role changes take effect upon next login.', 'à®ªà®™à¯à®•à¯ à®®à®¾à®±à¯à®±à®®à¯ à®…à®Ÿà¯à®¤à¯à®¤ à®®à¯à®±à¯ˆ à®‰à®³à¯à®¨à¯à®´à¯ˆà®¨à¯à®¤à®¾à®²à¯ à®¨à®Ÿà¯ˆà®®à¯à®±à¯ˆà®•à¯à®•à¯ à®µà®°à¯à®®à¯.')}
+              - {l('Role changes take effect upon next login.', 'à®ªà®™à¯à®•à¯ à®®à®¾à®±à¯à®±à®®à¯ à®…à®Ÿà¯à®¤à¯à®¤ à®®à¯à®±à¯ˆ à®‰à®³à¯à®¨à¯à®´à¯ˆà®¨à¯à®¤à®¾à®²à¯ à®¨à®Ÿà¯ˆà®®à¯à®±à¯ˆà®•à¯à®•à¯ à®µà®°à¯à®®à¯.')}
             </p>
           </div>
         )}
