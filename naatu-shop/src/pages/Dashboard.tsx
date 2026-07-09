@@ -111,6 +111,7 @@ export default function Dashboard() {
   const { products, fetchProducts } = useProductStore()
   const location = useLocation()
   const [tab, setTab] = useState<TabKey>(() => {
+    if ((location.state as Record<string, unknown>)?.editProductId) return 'products'
     if (location.pathname === '/whatsapp-center') return 'whatsapp'
     if (location.pathname === '/pos-analytics') return 'pos_analytics'
     return 'billing'
@@ -768,6 +769,16 @@ export default function Dashboard() {
     setVariantForm({ name: '', sizeLabel: '', price: '', purchasePrice: '', mrp: '', sku: '', barcode: '', stock: '50', weightValue: '', weightUnit: '', isDefault: false })
     setTab('products')
   }
+
+  useEffect(() => {
+    const state = location.state as Record<string, unknown> | null
+    const editId = state?.editProductId
+    if (editId && products.length > 0) {
+      const product = products.find(p => String(p.id) === String(editId))
+      if (product) handleEdit(product)
+      window.history.replaceState({}, '')
+    }
+  }, [products])
 
   const handleToggleActive = async (p: Product) => {
     const { error } = await supabase.from('products').update({ is_active: !p.isActive }).eq('id', p.id)
