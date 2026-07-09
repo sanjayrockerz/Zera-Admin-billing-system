@@ -15,7 +15,8 @@ export interface ThermalReceiptData {
   }>
   subtotal: number
   shipping: number
-  discountAmount: number
+  couponDiscount?: number
+  manualDiscount?: number
   totalGst?: number
   total: number
   storeName?: string
@@ -77,6 +78,7 @@ export function printThermalReceipt(data: ThermalReceiptData) {
       </head>
       <body>
         <div class="text-center mb-2">
+          <img src="/zera-logo.png" alt="ZERA" style="width: 50px; height: 50px; object-fit: contain; margin-bottom: 4px;" />
           <div class="font-bold" style="font-size: 16px;">${data.storeName || BRAND_EN}</div>
           <div style="font-size: 11px; margin-top: 2px;">${data.storeAddress || ''}</div>
           <div class="mt-2" style="font-size: 11px;">Ph: ${data.storePhone || BRAND_WHATSAPP}</div>
@@ -123,16 +125,22 @@ export function printThermalReceipt(data: ThermalReceiptData) {
                 <td class="text-right">${formatCurrency(data.subtotal)}</td>
               </tr>
             ` : ''}
-            ${data.discountAmount > 0 ? `
+            ${(data.couponDiscount || 0) > 0 ? `
               <tr>
-                <td class="text-left">Discount</td>
-                <td class="text-right">-${formatCurrency(data.discountAmount)}</td>
+                <td class="text-left">Coupon</td>
+                <td class="text-right">-${formatCurrency(data.couponDiscount || 0)}</td>
+              </tr>
+            ` : ''}
+            ${(data.manualDiscount || 0) > 0 ? `
+              <tr>
+                <td class="text-left">Manual Disc.</td>
+                <td class="text-right">-${formatCurrency(data.manualDiscount || 0)}</td>
               </tr>
             ` : ''}
             ${(data.totalGst || 0) > 0 ? `
               <tr>
-                <td class="text-left">Total GST</td>
-                <td class="text-right">${formatCurrency(data.totalGst || 0)}</td>
+                <td class="text-left">GST</td>
+                <td class="text-right">+${formatCurrency(data.totalGst || 0)}</td>
               </tr>
             ` : ''}
             ${data.shipping > 0 ? `

@@ -34,6 +34,8 @@ export interface InvoiceProps {
   deliveryCharge?: number
   discountAmount?: number
   couponCode?: string | null
+  manualDiscountAmount?: number
+  gstAmount?: number
 }
 
 export const Invoice: React.FC<InvoiceProps> = ({
@@ -51,6 +53,8 @@ export const Invoice: React.FC<InvoiceProps> = ({
   deliveryCharge = 0,
   discountAmount = 0,
   couponCode,
+  manualDiscountAmount = 0,
+  gstAmount = 0,
 }) => {
   const dateStr = (() => {
     try { return new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) }
@@ -177,9 +181,21 @@ export const Invoice: React.FC<InvoiceProps> = ({
             {discountAmount > 0 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span style={{ fontSize: 13, color: '#16a34a' }}>
-                  Discount{couponCode ? ` (${couponCode})` : ''}
+                  Coupon{couponCode ? ` (${couponCode})` : ''}
                 </span>
                 <span style={{ fontSize: 13, fontWeight: 700, color: '#16a34a' }}>−{formatCurrency(discountAmount)}</span>
+              </div>
+            )}
+            {manualDiscountAmount > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                <span style={{ fontSize: 13, color: '#16a34a' }}>Manual Discount</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#16a34a' }}>−{formatCurrency(manualDiscountAmount)}</span>
+              </div>
+            )}
+            {gstAmount > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                <span style={{ fontSize: 13, color: '#666' }}>GST</span>
+                <span style={{ fontSize: 13, fontWeight: 700 }}>+{formatCurrency(gstAmount)}</span>
               </div>
             )}
             {effectiveDelivery > 0 && (
@@ -188,7 +204,7 @@ export const Invoice: React.FC<InvoiceProps> = ({
                 <span style={{ fontSize: 13, fontWeight: 700 }}>{formatCurrency(effectiveDelivery)}</span>
               </div>
             )}
-            {effectiveDelivery === 0 && discountAmount === 0 && (
+            {effectiveDelivery === 0 && discountAmount === 0 && manualDiscountAmount === 0 && gstAmount === 0 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span style={{ fontSize: 13, color: '#666' }}>Delivery</span>
                 <span style={{ fontSize: 13, fontWeight: 700, color: '#16a34a' }}>FREE</span>

@@ -173,7 +173,7 @@ export default function Pos(props: PosProps = {}) {
       ? Math.max(0, Math.round((subtotal * (Math.max(0, Number(gstInput) || 0) / 100)) * 100) / 100)
       : Math.max(0, Number(gstInput) || 0))
     : 0
-  const total = Math.max(0, subtotal - couponDiscount - manualDiscountAmount + (Number(shipping || 0) || 0))
+  const total = Math.max(0, subtotal - couponDiscount - manualDiscountAmount + (Number(shipping || 0) || 0) + totalGst)
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const itemQtyMap = useMemo(() => {
@@ -568,7 +568,9 @@ export default function Pos(props: PosProps = {}) {
                 })),
                 subtotal: invoice.subtotal,
                 shipping: invoice.shipping,
-                discountAmount: (invoice.couponDiscount || 0) + (invoice.manualDiscountAmount || 0),
+                couponDiscount: invoice.couponDiscount || 0,
+                manualDiscount: invoice.manualDiscountAmount || 0,
+                totalGst: invoice.gstAmount || 0,
                 total: invoice.total
               })
             }}
@@ -608,6 +610,10 @@ export default function Pos(props: PosProps = {}) {
             shipping={invoice.shipping}
             total={invoice.total}
             status="Completed"
+            discountAmount={invoice.couponDiscount || 0}
+            manualDiscountAmount={invoice.manualDiscountAmount || 0}
+            gstAmount={invoice.gstAmount || 0}
+            couponCode={invoice.couponCode}
           />
         </div>
       </div>
