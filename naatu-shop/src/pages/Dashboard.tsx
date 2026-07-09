@@ -1356,21 +1356,57 @@ export default function Dashboard() {
 
                         // WhatsApp message text
                         const waMsg = [
-                          `ðŸŒ¿ *${l('Order Request', 'à®†à®°à¯à®Ÿà®°à¯ à®•à¯‹à®°à®¿à®•à¯à®•à¯ˆ')} - Naatu Marundhu*`,
-                          `ðŸ‘¤ ${order.customer_name || '-'}`,
-                          `ðŸ“ž ${order.phone || '-'}`,
-                          order.address ? `ðŸ“ ${order.address}` : '',
+                          `🛍️ *Thank you for shopping with ZERA!*`,
                           '',
-                          `ðŸ“¦ *${l('Items', 'à®ªà¯Šà®°à¯à®Ÿà¯à®•à®³à¯')}:*`,
+                          `Dear *${order.customer_name || 'Valued Customer'}*,`,
+                          '',
+                          `We truly appreciate your purchase and hope you enjoyed your shopping experience with us.`,
+                          '',
+                          `━━━━━━━━━━━━━━━━━━`,
+                          `🧾 *INVOICE SUMMARY*`,
+                          `━━━━━━━━━━━━━━━━━━`,
+                          '',
+                          `Invoice No : ${order.invoice_no || order.id || '-'}`,
+                          `Date : ${new Date(order.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`,
+                          '',
+                          `Customer : ${order.customer_name || '-'}`,
+                          `Phone : ${order.phone || '-'}`,
+                          '',
+                          `━━━━━━━━━━━━━━━━━━`,
+                          `🛒 *ITEMS PURCHASED*`,
+                          `━━━━━━━━━━━━━━━━━━`,
+                          '',
                           ...its.map(raw => {
                             const it = raw as Record<string, unknown>
                             const nm = String(it.name || it.product_name || 'Product')
                             const qty = toNumber(it.quantity ?? it.qty, 0)
+                            const rate = qty > 0 ? toNumber(it.line_total ?? it.lineTotal, 0) / qty : 0
                             const lt = toNumber(it.line_total ?? it.lineTotal, 0)
-                            return `- ${nm} x ${qty} - ${formatCurrency(lt)}`
+                            return `• ${nm}\n  Qty : ${qty} × ${formatCurrency(rate)}\n  Amount : ${formatCurrency(lt)}`
                           }),
                           '',
-                          `ðŸ’° *${l('Estimated Total', 'à®®à®¤à®¿à®ªà¯à®ªà®¿à®Ÿà¯à®Ÿà¯')}: ${formatCurrency(toNumber(order.total, 0))}*`,
+                          `━━━━━━━━━━━━━━━━━━`,
+                          `💰 *BILL SUMMARY*`,
+                          `━━━━━━━━━━━━━━━━━━`,
+                          '',
+                          `Subtotal           : ${formatCurrency(toNumber(order.total, 0))}`,
+                          '',
+                          `━━━━━━━━━━━━━━━━━━`,
+                          `*Grand Total : ${formatCurrency(toNumber(order.total, 0))}*`,
+                          `━━━━━━━━━━━━━━━━━━`,
+                          '',
+                          `We sincerely thank you for choosing *ZERA*. ❤️`,
+                          '',
+                          `We look forward to serving you again.`,
+                          '',
+                          `📍 *ZERA*`,
+                          `Kurinji Nagar,`,
+                          `Brindhavan Circle,`,
+                          `Kuniyamuthur`,
+                          '',
+                          `📞 +91 9342489391`,
+                          '',
+                          `Have a wonderful day! 😊`,
                         ].filter(Boolean).join('\n')
 
                         return (

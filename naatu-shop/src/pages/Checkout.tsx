@@ -97,12 +97,10 @@ export default function Checkout() {
     cartItems: typeof items,
   ) => {
     return encodeURIComponent(buildProfessionalWhatsAppMessage({
-      title: 'Order Request',
-      referenceLabel: 'Request ID',
-      referenceValue: snapshot.requestId,
       customerName: snapshot.name,
       phone: snapshot.phone,
-      address: snapshot.address,
+      invoiceNumber: snapshot.requestId,
+      paymentMode: 'Online Request',
       items: cartItems.map((i) => ({
         name: lang === 'ta' && i.nameTa ? i.nameTa : i.name,
         qty: i.qty,
@@ -112,10 +110,8 @@ export default function Checkout() {
         lineTotal: i.lineTotal,
       })),
       subtotal: snapshot.subtotal,
-      couponCode: snapshot.couponCode || null,
       couponDiscount: snapshot.discountAmount,
       total: snapshot.total,
-      closingNote: 'Thank you for your order. Our team will confirm the details on WhatsApp shortly.',
     }))
   }
 
@@ -211,12 +207,10 @@ export default function Checkout() {
   if (booked) {
     const waText = encodeURIComponent(
       buildProfessionalWhatsAppMessage({
-        title: 'Order Request',
-        referenceLabel: 'Request ID',
-        referenceValue: booked.requestId,
         customerName: booked.name,
         phone: booked.phone,
-        address: booked.address,
+        invoiceNumber: booked.requestId,
+        paymentMode: 'Online Request',
         items: items.map((i) => ({
           name: lang === 'ta' && i.nameTa ? i.nameTa : i.name,
           qty: i.qty,
@@ -226,10 +220,8 @@ export default function Checkout() {
           lineTotal: i.lineTotal,
         })),
         subtotal: booked.subtotal,
-        couponCode: booked.couponCode || null,
         couponDiscount: booked.discountAmount,
         total: booked.total,
-        closingNote: 'Thank you for your order. Our team will confirm the details on WhatsApp shortly.',
       })
     )
 

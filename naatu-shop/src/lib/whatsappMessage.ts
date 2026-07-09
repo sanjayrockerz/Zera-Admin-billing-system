@@ -1,5 +1,5 @@
-import { BRAND_ADDRESS, BRAND_EMAIL, BRAND_EN, BRAND_PHONE_DISPLAY } from './brand'
-import { formatCurrency, formatQuantityDisplay } from './retail'
+import { BRAND_PHONE_DISPLAY } from './brand'
+import { formatCurrency } from './retail'
 
 export type WhatsAppLineItem = {
   name: string
@@ -11,72 +11,92 @@ export type WhatsAppLineItem = {
 }
 
 type BuildWhatsAppMessageInput = {
-  title: string
-  referenceLabel: string
-  referenceValue: string
   customerName?: string
   phone?: string
-  address?: string
+  invoiceNumber: string
+  invoiceDate?: string
+  paymentMode?: string
   items: WhatsAppLineItem[]
   subtotal: number
-  couponCode?: string | null
   couponDiscount?: number
   manualDiscountAmount?: number
   shipping?: number
   gstAmount?: number
   total: number
-  closingNote?: string
 }
 
 export const buildProfessionalWhatsAppMessage = (input: BuildWhatsAppMessageInput) => {
-  const lines = input.items.map((item, index) => {
-    const quantity = formatQuantityDisplay(item.qty, item.unit, item.unitType)
-    return `${index + 1}. ${item.name}\n   Qty: ${quantity}\n   Rate: ${formatCurrency(item.rate)}\n   Amount: ${formatCurrency(item.lineTotal)}`
-  })
+  const dateStr = input.invoiceDate || new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  const customerName = input.customerName || 'Valued Customer'
+  const phone = input.phone || '-'
+  const paymentMode = input.paymentMode || 'POS'
 
-  const couponBlock = input.couponCode
-    ? `\nCoupon Applied: ${input.couponCode}${(input.couponDiscount || 0) > 0 ? ` (-${formatCurrency(input.couponDiscount || 0)})` : ''}`
-    : '\nCoupon Applied: None'
+  const itemLines = input.items.map(item => (
+    `• ${item.name}\n  Qty : ${item.qty} × ${formatCurrency(item.rate)}\n  Amount : ${formatCurrency(item.lineTotal)}`
+  ))
 
-  const manualDiscountBlock = (input.manualDiscountAmount || 0) > 0
-    ? `\nManual Discount: -${formatCurrency(input.manualDiscountAmount || 0)}`
-    : ''
+  const couponLine = (input.couponDiscount || 0) > 0
+    ? `Coupon Discount    : -${formatCurrency(input.couponDiscount || 0)}` : ''
 
-  const gstBlock = (input.gstAmount || 0) > 0
-    ? `\nGST: ${formatCurrency(input.gstAmount || 0)}`
-    : ''
+  const manualLine = (input.manualDiscountAmount || 0) > 0
+    ? `Manual Discount    : -${formatCurrency(input.manualDiscountAmount || 0)}` : ''
 
-  const shippingBlock = (input.shipping || 0) > 0
-    ? `\nDelivery: ${formatCurrency(input.shipping || 0)}`
-    : ''
+  const gstLine = (input.gstAmount || 0) > 0
+    ? `GST                : ${formatCurrency(input.gstAmount || 0)}` : ''
 
-  const customerBlock = [
-    input.customerName ? `Customer: ${input.customerName}` : null,
-    input.phone ? `Phone: ${input.phone}` : null,
-    input.address ? `Address: ${input.address}` : null,
-  ].filter(Boolean).join('\n')
+  const deliveryLine = (input.shipping || 0) > 0
+    ? `Delivery Charges   : ${formatCurrency(input.shipping || 0)}` : ''
 
   return [
-    `*${BRAND_EN}*`,
-    BRAND_ADDRESS,
-    `Phone: ${BRAND_PHONE_DISPLAY}`,
-    `Email: ${BRAND_EMAIL}`,
+    `🛍️ *Thank you for shopping with ZERA!*`,
     '',
-    `${input.title}`,
-    `${input.referenceLabel}: ${input.referenceValue}`,
-    customerBlock ? '' : null,
-    customerBlock || null,
+    `Dear *${customerName}*,`,
     '',
-    'Items:',
-    ...lines.map((line) => `\n${line}`),
+    `We truly appreciate your purchase and hope you enjoyed your shopping experience with us.`,
     '',
-    `Subtotal: ${formatCurrency(input.subtotal)}`,
-    couponBlock,
-    manualDiscountBlock,
-    gstBlock,
-    shippingBlock,
-    `Grand Total: ${formatCurrency(input.total)}`,
+    `━━━━━━━━━━━━━━━━━━`,
+    `🧾 *INVOICE SUMMARY*`,
+    `━━━━━━━━━━━━━━━━━━`,
     '',
-    input.closingNote || 'Thank you for your order. We appreciate your business.',
-  ].filter((part) => part !== null && part !== '').join('\n')
+    `Invoice No : ${input.invoiceNumber}`,
+    `Date : ${dateStr}`,
+    '',
+    `Customer : ${customerName}`,
+    `Phone : ${phone}`,
+    '',
+    `━━━━━━━━━━━━━━━━━━`,
+    `🛒 *ITEMS PURCHASED*`,
+    `━━━━━━━━━━━━━━━━━━`,
+    '',
+    ...itemLines,
+    '',
+    `━━━━━━━━━━━━━━━━━━`,
+    `💰 *BILL SUMMARY*`,
+    `━━━━━━━━━━━━━━━━━━`,
+    '',
+    `Subtotal           : ${formatCurrency(input.subtotal)}`,
+    couponLine,
+    manualLine,
+    gstLine,
+    deliveryLine,
+    '',
+    `━━━━━━━━━━━━━━━━━━`,
+    `*Grand Total : ${formatCurrency(input.total)}*`,
+    `━━━━━━━━━━━━━━━━━━`,
+    '',
+    `Payment Mode : ${paymentMode}`,
+    '',
+    `We sincerely thank you for choosing *ZERA*. ❤️`,
+    '',
+    `We look forward to serving you again.`,
+    '',
+    `📍 *ZERA*`,
+    `Kurinji Nagar,`,
+    `Brindhavan Circle,`,
+    `Kuniyamuthur`,
+    '',
+    `📞 ${BRAND_PHONE_DISPLAY}`,
+    '',
+    `Have a wonderful day! 😊`,
+  ].filter(Boolean).join('\n')
 }

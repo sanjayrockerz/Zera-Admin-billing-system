@@ -60,6 +60,7 @@ type InvoiceSnap = {
   address: string
   amountReceived: number
   balanceReturned: number
+  paymentMode: string
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -441,6 +442,7 @@ export default function Pos(props: PosProps = {}) {
         address: customer.address.trim() || 'POS Counter',
         amountReceived: cashReceivedNum,
         balanceReturned: balanceToReturn,
+        paymentMode: orderMode === 'online' ? 'Online' : cashReceivedNum > 0 ? 'Cash' : 'POS',
       })
       setItems([])
       setCustomer({ name: '', phone: '', address: '' })
@@ -463,12 +465,10 @@ export default function Pos(props: PosProps = {}) {
   const sendPosWhatsApp = (inv: InvoiceSnap) => {
     const waLink = toWhatsAppUrl(inv.phone || customer.phone || '')
     const text = encodeURIComponent(buildProfessionalWhatsAppMessage({
-      title: 'POS Receipt',
-      referenceLabel: 'Invoice No',
-      referenceValue: inv.invoiceNo,
       customerName: inv.customerName,
       phone: inv.phone,
-      address: inv.address,
+      invoiceNumber: inv.invoiceNo,
+      paymentMode: inv.paymentMode || 'POS',
       items: inv.items.map((item) => ({
         name: item.name,
         qty: item.qty,
@@ -478,13 +478,11 @@ export default function Pos(props: PosProps = {}) {
         lineTotal: item.lineTotal,
       })),
       subtotal: inv.subtotal,
-      couponCode: inv.couponCode || null,
       couponDiscount: inv.couponDiscount,
       manualDiscountAmount: inv.manualDiscountAmount,
       shipping: inv.shipping,
       gstAmount: inv.gstAmount,
       total: inv.total,
-      closingNote: 'Thank you for shopping with us. We look forward to serving you again.',
     }))
     window.open(`${waLink}?text=${text}`, '_blank')
   }
