@@ -284,6 +284,28 @@ export default function Dashboard() {
     const todayOnlineRevenue = todayOnline.reduce((s, o) => s + toNumber(o.total, 0), 0)
     const todayManualRevenue = todayManual.reduce((s, o) => s + toNumber(o.total, 0), 0)
 
+    // Product hourly trend (products sold per hour today)
+    const productHourlyMap = new Map<string, number>()
+    todayOrders.forEach(o => {
+      const hour = String(new Date(o.created_at).getHours()).padStart(2, '0')
+      const totalQty = parseOrderItems(o.items).reduce((s, item) => s + toNumber(item.quantity ?? item.qty, 0), 0)
+      productHourlyMap.set(hour, (productHourlyMap.get(hour) || 0) + totalQty)
+    })
+    const todayProductHourlyTrend = Array.from({ length: 24 }, (_, i) => {
+      const h = String(i).padStart(2, '0')
+      const ampm = i < 12 ? 'AM' : 'PM'
+      const h12 = i === 0 ? 12 : i > 12 ? i - 12 : i
+      return { hour: `${h12} ${ampm}`, key: h, qty: productHourlyMap.get(h) || 0 }
+    })
+
+    // Average items per bill
+    const avgItemsPerBill = billableCompleted.length > 0
+      ? totalProductsSold / billableCompleted.length : 0
+
+    // Category distribution for chart
+    const categoryDist = Array.from(categoryMap.entries()).sort((a, b) => b[1].revenue - a[1].revenue).slice(0, 8)
+      .map(([name, data]) => ({ name, value: data.revenue }))
+
     const monthlyRevenue = billableCompleted.filter(o => toLocalMonthKey(o.created_at) === monthKey).reduce((s, o) => s + toNumber(o.total, 0), 0)
 
     // Item-level analytics
@@ -388,6 +410,30 @@ export default function Dashboard() {
       couponMap.set(code, u)
     })
     const topCoupons = Array.from(couponMap.values()).sort((a, b) => b.usage - a.usage)
+    const totalCouponDiscounts = topCoupons.reduce((s, c) => s + c.discounts, 0)
+    const totalCouponOrders = topCoupons.reduce((s, c) => s + c.usage, 0)
+    const couponUsageRate = billableCompleted.length > 0
+      ? (totalCouponOrders / billableCompleted.length) * 100 : 0
+
+    // Coupon daily trend (last 7 days)
+    const couponDailyMap = new Map<string, { orders: number; discounts: number }>()
+    billableCompleted.forEach(order => {
+      const code = String((order as Record<string,unknown>).coupon_code || '').trim()
+      if (!code) return
+      const k = toLocalDateKey(order.created_at)
+      const d = couponDailyMap.get(k) || { orders: 0, discounts: 0 }
+      d.orders += 1
+      d.discounts += toNumber((order as Record<string,unknown>).discount_amount, 0)
+      couponDailyMap.set(k, d)
+    })
+    const couponDailyTrend = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date()
+      d.setDate(d.getDate() - (6 - i))
+      const k = toLocalDateKey(d)
+      const dayName = new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(d)
+      const data = couponDailyMap.get(k) || { orders: 0, discounts: 0 }
+      return { day: dayName, date: k, orders: data.orders, discounts: data.discounts }
+    })
 
     // WhatsApp analytics (zero revenue - status changes never affect revenue)
     const waRequests  = waOrders.length
@@ -432,6 +478,13 @@ export default function Dashboard() {
       todayOfflineRevenue,
       todayOnlineRevenue,
       todayManualRevenue,
+      todayProductHourlyTrend,
+      avgItemsPerBill,
+      categoryDist,
+      totalCouponDiscounts,
+      totalCouponOrders,
+      couponUsageRate,
+      couponDailyTrend,
       pendingOrders: pendingOrders.length,
       onlineRequests: waRequests,
       onlineRequestOrders: waOrders,
@@ -946,9 +999,9 @@ export default function Dashboard() {
     }
   }, [sidebarCollapsed])
 
-  // Auto-refresh today's sales data every 30 seconds
+  // Auto-refresh analytics data every 30 seconds
   useEffect(() => {
-    if (tab !== 'pos_analytics' || posAnalyticsTab !== 'today') return
+    if (tab !== 'pos_analytics' || (posAnalyticsTab !== 'today' && posAnalyticsTab !== 'products' && posAnalyticsTab !== 'categories' && posAnalyticsTab !== 'coupons')) return
     const interval = setInterval(() => { void loadData() }, 30000)
     return () => clearInterval(interval)
   }, [tab, posAnalyticsTab, loadData])
@@ -1940,38 +1993,110 @@ export default function Dashboard() {
 
             {/* Products sub-tab */}
             {posAnalyticsTab === 'products' && (
-              <div className="bg-white rounded-2xl border border-[#EAD7B7]/30 p-5 shadow-sm">
-                <h3 className="text-base font-black text-[#2C392A] mb-4">{l('Product Analytics', 'à®ªà¯Šà®°à¯à®³à¯ à®ªà®•à¯à®ªà¯à®ªà®¾à®¯à¯à®µà¯')}</h3>
-                {analytics.topProducts.length > 0 ? (
-                  <div className="overflow-x-auto rounded-xl border border-[#EAD7B7]/30">
-                    <table className="w-full min-w-[580px] text-left text-[13px]">
-                      <thead className="bg-[#F7F6F2] text-[10px] uppercase tracking-wider text-[#5F6D59]">
-                        <tr>
-                          <th className="px-4 py-2.5 font-black">#</th>
-                          <th className="px-4 py-2.5 font-black">{l('Product', 'à®ªà¯Šà®°à¯à®³à¯')}</th>
-                          <th className="px-4 py-2.5 font-black">{l('Variant', 'à®µà®•à¯ˆà®ªà¯à®ªà®Ÿà®¿')}</th>
-                          <th className="px-4 py-2.5 font-black">{l('Qty Sold', 'à®µà®¿à®±à¯à®± à®…à®³à®µà¯')}</th>
-                          <th className="px-4 py-2.5 font-black">{l('Revenue', 'à®µà®°à¯à®µà®¾à®¯à¯')}</th>
-                          <th className="px-4 py-2.5 font-black">{l('Bills', 'à®ªà®¿à®²à¯à®•à®³à¯')}</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[#EAD7B7]/20">
-                        {analytics.topProducts.slice(0, 20).map((p, i) => (
-                          <tr key={`${p.name}-${p.variant || i}`} className="hover:bg-[#F7F6F2]/50">
-                            <td className="px-4 py-2 text-[11px] text-[#9BAB9A] font-bold">{i + 1}</td>
-                            <td className="px-4 py-2 font-bold text-[#2C392A]">{p.name}</td>
-                            <td className="px-4 py-2 text-[#5F6D59]">{p.variant || '-'}</td>
-                            <td className="px-4 py-2 font-bold">{Math.round(p.qty)}</td>
-                            <td className="px-4 py-2 font-bold text-emerald-700">{formatCurrency(p.revenue)}</td>
-                            <td className="px-4 py-2 text-[#5F6D59]">{p.billCount}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+              <div className="space-y-6">
+                {/* Key metrics row */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  {[
+                    { label: 'Total Products Sold', value: String(Math.round(analytics.totalProductsSold)), icon: <Package size={18} />, from: 'from-emerald-500 to-teal-600' },
+                    { label: 'Total Revenue', value: formatCurrency(analytics.totalCompletedRevenue), icon: <IndianRupee size={18} />, from: 'from-blue-500 to-indigo-600' },
+                    { label: 'Avg Items / Bill', value: analytics.avgItemsPerBill.toFixed(1), icon: <ShoppingCart size={18} />, from: 'from-violet-500 to-purple-600' },
+                    { label: 'Top Product', value: analytics.bestProduct.length > 15 ? analytics.bestProduct.slice(0, 15) + '...' : analytics.bestProduct, icon: <Trophy size={18} />, from: 'from-amber-500 to-orange-600' },
+                  ].map((card, i) => (
+                    <div key={i} className={`relative overflow-hidden rounded-2xl p-5 shadow-lg border border-white/20 bg-gradient-to-br ${card.from}`}>
+                      <div className="absolute inset-0 bg-gradient-to-tl from-white/30 via-white/10 to-transparent" />
+                      <div className="relative z-10">
+                        <div className="flex items-center justify-between mb-3">
+                          <p className="text-[10px] uppercase font-black text-white/80 tracking-wider">{card.label}</p>
+                          <div className="w-9 h-9 rounded-xl bg-white/25 backdrop-blur-sm flex items-center justify-center text-white shadow-sm">{card.icon}</div>
+                        </div>
+                        <p className="text-[22px] font-extrabold text-white drop-shadow-sm truncate">{card.value}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Product hourly trend + Top categories */}
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                  <div className="xl:col-span-2 bg-white rounded-2xl border border-[#EAD7B7]/30 p-5 shadow-sm">
+                    <h3 className="text-[15px] font-bold text-[#2C392A] mb-4">Product Sales Hourly Trend</h3>
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={analytics.todayProductHourlyTrend.filter(h => h.qty > 0)}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
+                          <XAxis dataKey="hour" tick={{ fill: '#6B7280', fontSize: 10, fontWeight: 600 }} axisLine={false} tickLine={false} interval={0} angle={-45} textAnchor="end" height={50} />
+                          <YAxis hide />
+                          <Tooltip cursor={{ fill: '#F9FAFB' }} formatter={(value) => [`${value} items`, 'Qty Sold']} />
+                          <Bar dataKey="qty" fill="url(#prodGrad)" radius={[4, 4, 0, 0]} barSize={20} />
+                          <defs>
+                            <linearGradient id="prodGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#7DAA8F" />
+                              <stop offset="100%" stopColor="#2C392A" />
+                            </linearGradient>
+                          </defs>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                    {analytics.todayProductHourlyTrend.filter(h => h.qty > 0).length === 0 && (
+                      <p className="text-center text-[13px] text-[#5F6D59] py-8">No product sales recorded today yet.</p>
+                    )}
                   </div>
-                ) : (
-                  <p className="text-center text-[13px] text-[#5F6D59] py-6">{l('No product sales in selected period', 'à®¤à¯‡à®°à¯à®¨à¯à®¤ à®•à®¾à®²à®¤à¯à®¤à®¿à®²à¯ à®µà®¿à®±à¯à®ªà®©à¯ˆ à®‡à®²à¯à®²à¯ˆ')}</p>
-                )}
+
+                  <div className="bg-white rounded-2xl border border-[#EAD7B7]/30 p-5 shadow-sm">
+                    <h3 className="text-[15px] font-bold text-[#2C392A] mb-4">Top Categories</h3>
+                    <div className="space-y-3">
+                      {analytics.topCategories.slice(0, 6).map((c, i) => (
+                        <div key={c.name} className="flex items-center justify-between bg-[#F7F6F2] p-3 rounded-xl">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[13px] font-bold text-[#2C392A] truncate">{c.name}</p>
+                            <p className="text-[11px] text-[#5F6D59]">{Math.round(c.qty)} sold</p>
+                          </div>
+                          <p className="text-[13px] font-black text-[#7DAA8F] ml-2">{formatCurrency(c.revenue)}</p>
+                        </div>
+                      ))}
+                      {analytics.topCategories.length === 0 && (
+                        <p className="text-center text-[13px] text-[#5F6D59] py-6">No categories yet.</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Full product table */}
+                <div className="bg-white rounded-2xl border border-[#EAD7B7]/30 p-5 shadow-sm">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-[15px] font-bold text-[#2C392A]">All Products</h3>
+                    <span className="text-[11px] font-bold text-[#7DAA8F]">{analytics.topProducts.length} products</span>
+                  </div>
+                  {analytics.topProducts.length > 0 ? (
+                    <div className="overflow-x-auto rounded-xl border border-[#EAD7B7]/30">
+                      <table className="w-full min-w-[580px] text-left text-[12px]">
+                        <thead className="bg-[#F7F6F2] text-[10px] uppercase tracking-wider text-[#5F6D59]">
+                          <tr>
+                            <th className="px-4 py-2.5 font-black">#</th>
+                            <th className="px-4 py-2.5 font-black">Product</th>
+                            <th className="px-4 py-2.5 font-black">Variant</th>
+                            <th className="px-4 py-2.5 font-black">Qty Sold</th>
+                            <th className="px-4 py-2.5 font-black">Revenue</th>
+                            <th className="px-4 py-2.5 font-black">Bills</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#EAD7B7]/20">
+                          {analytics.topProducts.slice(0, 50).map((p, i) => (
+                            <tr key={`${p.name}-${p.variant || i}`} className="hover:bg-[#F7F6F2]/50">
+                              <td className="px-4 py-2 text-[11px] text-[#9BAB9A] font-bold">{i + 1}</td>
+                              <td className="px-4 py-2 font-bold text-[#2C392A]">{p.name}</td>
+                              <td className="px-4 py-2 text-[#5F6D59]">{p.variant || '-'}</td>
+                              <td className="px-4 py-2 font-bold">{Math.round(p.qty)}</td>
+                              <td className="px-4 py-2 font-bold text-emerald-700">{formatCurrency(p.revenue)}</td>
+                              <td className="px-4 py-2 text-[#5F6D59]">{p.billCount}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="text-center text-[13px] text-[#5F6D59] py-6">No product sales in selected period</p>
+                  )}
+                </div>
               </div>
             )}
 
@@ -2010,24 +2135,113 @@ export default function Dashboard() {
 
             {/* Coupons sub-tab */}
             {posAnalyticsTab === 'coupons' && (
-              <div className="bg-white rounded-2xl border border-[#EAD7B7]/30 p-5 shadow-sm">
-                <h3 className="text-base font-black text-[#2C392A] mb-4">{l('Coupon Analytics', 'à®•à¯‚à®ªà¯à®ªà®©à¯ à®ªà®•à¯à®ªà¯à®ªà®¾à®¯à¯à®µà¯')}</h3>
-                <div className="space-y-3">
-                  {analytics.topCoupons.length > 0 ? analytics.topCoupons.map((coupon) => (
-                    <div key={coupon.code} className="flex items-center justify-between gap-3 p-3 bg-[#F7F6F2] rounded-xl">
-                      <div>
-                        <p className="font-black text-[#2C392A]">{coupon.code}</p>
-                        <p className="text-[11px] text-[#5F6D59]">{l('Used', 'à®ªà®¯à®©à¯à®ªà®Ÿà¯à®Ÿà®¤à¯')} {coupon.usage} {l('time(s)', 'à®®à¯à®±à¯ˆ')}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-black text-[#2C392A]">{formatCurrency(coupon.discounts)}</p>
-                        <p className="text-[11px] text-[#5F6D59]">{l('Discounts given', 'à®µà®´à®™à¯à®•à®ªà¯à®ªà®Ÿà¯à®Ÿ à®¤à®³à¯à®³à¯à®ªà®Ÿà®¿')}</p>
+              <div className="space-y-6">
+                {/* Key metrics row */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  {[
+                    { label: 'Coupons Used', value: String(analytics.totalCouponOrders), icon: <ShoppingCart size={18} />, from: 'from-emerald-500 to-teal-600' },
+                    { label: 'Total Discounts Given', value: formatCurrency(analytics.totalCouponDiscounts), icon: <IndianRupee size={18} />, from: 'from-blue-500 to-indigo-600' },
+                    { label: 'Usage Rate', value: `${analytics.couponUsageRate.toFixed(1)}%`, icon: <TrendingUp size={18} />, from: 'from-violet-500 to-purple-600' },
+                    { label: 'Unique Coupons', value: String(analytics.topCoupons.length), icon: <Trophy size={18} />, from: 'from-amber-500 to-orange-600' },
+                  ].map((card, i) => (
+                    <div key={i} className={`relative overflow-hidden rounded-2xl p-5 shadow-lg border border-white/20 bg-gradient-to-br ${card.from}`}>
+                      <div className="absolute inset-0 bg-gradient-to-tl from-white/30 via-white/10 to-transparent" />
+                      <div className="relative z-10">
+                        <div className="flex items-center justify-between mb-3">
+                          <p className="text-[10px] uppercase font-black text-white/80 tracking-wider">{card.label}</p>
+                          <div className="w-9 h-9 rounded-xl bg-white/25 backdrop-blur-sm flex items-center justify-center text-white shadow-sm">{card.icon}</div>
+                        </div>
+                        <p className="text-[22px] font-extrabold text-white drop-shadow-sm truncate">{card.value}</p>
                       </div>
                     </div>
-                  )) : (
-                    <div className="text-center text-[13px] text-[#5F6D59] py-8">{l('No coupon usage yet', 'à®•à¯‚à®ªà¯à®ªà®©à¯ à®ªà®¯à®©à¯à®ªà®¾à®Ÿà¯ à®‡à®²à¯à®²à¯ˆ')}</div>
-                  )}
+                  ))}
                 </div>
+
+                {/* Coupon daily trend + Top coupons */}
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                  <div className="xl:col-span-2 bg-white rounded-2xl border border-[#EAD7B7]/30 p-5 shadow-sm">
+                    <h3 className="text-[15px] font-bold text-[#2C392A] mb-4">Coupon Usage (Last 7 Days)</h3>
+                    {analytics.couponDailyTrend.some(d => d.orders > 0) ? (
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={analytics.couponDailyTrend}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
+                            <XAxis dataKey="day" tick={{ fill: '#6B7280', fontSize: 11, fontWeight: 700 }} axisLine={false} tickLine={false} />
+                            <YAxis hide />
+                            <Tooltip cursor={{ fill: '#F9FAFB' }} formatter={(value, name) => [value, name === 'orders' ? 'Orders' : 'Discounts']} />
+                            <Bar dataKey="orders" fill="url(#couponGrad)" radius={[4, 4, 0, 0]} barSize={24} />
+                            <defs>
+                              <linearGradient id="couponGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#7DAA8F" />
+                                <stop offset="100%" stopColor="#2C392A" />
+                              </linearGradient>
+                            </defs>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    ) : (
+                      <p className="text-center text-[13px] text-[#5F6D59] py-12">No coupon usage in the last 7 days.</p>
+                    )}
+                  </div>
+
+                  <div className="bg-white rounded-2xl border border-[#EAD7B7]/30 p-5 shadow-sm">
+                    <h3 className="text-[15px] font-bold text-[#2C392A] mb-4">Top Coupons</h3>
+                    <div className="space-y-3">
+                      {analytics.topCoupons.slice(0, 8).map((coupon, i) => (
+                        <div key={coupon.code} className="flex items-center justify-between gap-2 p-3 bg-[#F7F6F2] rounded-xl">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-black text-[#9BAB9A]">{i + 1}</span>
+                              <p className="text-[13px] font-bold text-[#2C392A] truncate">{coupon.code}</p>
+                            </div>
+                            <p className="text-[11px] text-[#5F6D59] ml-5">{coupon.usage} order{coupon.usage > 1 ? 's' : ''}</p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-[13px] font-black text-emerald-700">{formatCurrency(coupon.discounts)}</p>
+                            <p className="text-[10px] text-[#5F6D59]">discounted</p>
+                          </div>
+                        </div>
+                      ))}
+                      {analytics.topCoupons.length === 0 && (
+                        <p className="text-center text-[13px] text-[#5F6D59] py-6">No coupon usage yet</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Coupon detail table */}
+                {analytics.topCoupons.length > 0 && (
+                  <div className="bg-white rounded-2xl border border-[#EAD7B7]/30 p-5 shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-[15px] font-bold text-[#2C392A]">All Coupons Performance</h3>
+                      <span className="text-[11px] font-bold text-[#7DAA8F]">{analytics.topCoupons.length} coupons</span>
+                    </div>
+                    <div className="overflow-x-auto rounded-xl border border-[#EAD7B7]/30">
+                      <table className="w-full min-w-[400px] text-left text-[12px]">
+                        <thead className="bg-[#F7F6F2] text-[10px] uppercase tracking-wider text-[#5F6D59]">
+                          <tr>
+                            <th className="px-4 py-2.5 font-black">#</th>
+                            <th className="px-4 py-2.5 font-black">Code</th>
+                            <th className="px-4 py-2.5 font-black">Orders</th>
+                            <th className="px-4 py-2.5 font-black">Total Discount</th>
+                            <th className="px-4 py-2.5 font-black">Avg Discount</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#EAD7B7]/20">
+                          {analytics.topCoupons.map((coupon, i) => (
+                            <tr key={coupon.code} className="hover:bg-[#F7F6F2]/50">
+                              <td className="px-4 py-2 text-[11px] text-[#9BAB9A] font-bold">{i + 1}</td>
+                              <td className="px-4 py-2 font-bold text-[#2C392A]">{coupon.code}</td>
+                              <td className="px-4 py-2 font-bold">{coupon.usage}</td>
+                              <td className="px-4 py-2 font-bold text-emerald-700">{formatCurrency(coupon.discounts)}</td>
+                              <td className="px-4 py-2 text-[#5F6D59]">{coupon.usage > 0 ? formatCurrency(coupon.discounts / coupon.usage) : '-'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
