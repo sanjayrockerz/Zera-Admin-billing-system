@@ -48,7 +48,7 @@ type DashboardCoupon = {
   min_order_value: number
 }
 type TabKey = 'overview' | 'whatsapp' | 'pos_analytics' | 'billing' | 'products' | 'categories' | 'coupons' | 'users' | 'history'
-type PosAnalyticsTab = 'revenue' | 'products' | 'categories' | 'coupons'
+type PosAnalyticsTab = 'revenue' | 'today' | 'products' | 'categories' | 'coupons'
 type ProfileUser = { id: string; email: string; name: string; mobile: string; role: string; created_at: string }
 
 const normalizeStatus = (v: unknown) => String(v || '').trim().toLowerCase()
@@ -236,6 +236,54 @@ export default function Dashboard() {
     const todayKey  = toLocalDateKey(new Date())
     const monthKey  = todayKey.slice(0, 7)
     const todaySales   = orders.filter(o => isCompletedStatus(o.status) && o.order_type !== 'whatsapp_request' && toLocalDateKey(o.created_at) === todayKey).reduce((s, o) => s + toNumber(o.total, 0), 0)
+
+    // Today-specific analytics (for TODAY'S SALES tab)
+    const todayOrders = billableCompleted.filter(o => toLocalDateKey(o.created_at) === todayKey)
+    const todayCompletedOrdersCount = todayOrders.length
+    const todayItemsSold = todayOrders.reduce((s, o) => {
+      const items = parseOrderItems(o.items)
+      return s + items.reduce((sum, item) => sum + toNumber(item.quantity ?? item.qty, 0), 0)
+    }, 0)
+    const todayAvgOrderValue = todayCompletedOrdersCount > 0 ? todaySales / todayCompletedOrdersCount : 0
+
+    // Hourly trend for today
+    const hourlyMap = new Map<string, number>()
+    todayOrders.forEach(o => {
+      const hour = String(new Date(o.created_at).getHours()).padStart(2, '0')
+      hourlyMap.set(hour, (hourlyMap.get(hour) || 0) + toNumber(o.total, 0))
+    })
+    const todayHourlyTrend = Array.from({ length: 24 }, (_, i) => {
+      const h = String(i).padStart(2, '0')
+      const hourLabel = `${h}:00`
+      // Use 12-hour format
+      const ampm = i < 12 ? 'AM' : 'PM'
+      const h12 = i === 0 ? 12 : i > 12 ? i - 12 : i
+      return { hour: `${h12} ${ampm}`, key: h, revenue: hourlyMap.get(h) || 0 }
+    })
+
+    // Today's top products
+    const todayProductMap = new Map<string, { name: string; qty: number; revenue: number }>()
+    todayOrders.forEach(o => {
+      parseOrderItems(o.items).forEach(item => {
+        const name = String(item.product_name || item.name || 'Product').trim()
+        const qty = toNumber(item.quantity ?? item.qty, 0)
+        const rev = toNumber(item.line_total ?? item.lineTotal, 0)
+        const p = todayProductMap.get(name) || { name, qty: 0, revenue: 0 }
+        p.qty += qty; p.revenue += rev
+        todayProductMap.set(name, p)
+      })
+    })
+    const todayTopProducts = Array.from(todayProductMap.values()).sort((a, b) => b.revenue - a.revenue).slice(0, 5)
+    const todayBills = todayOrders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 10)
+
+    // Today's channel breakdown
+    const todayOffline = todayOrders.filter(o => normalizeOrderType(o.order_type) === 'pos_sale' && normalizeOrderMode(o.order_mode) !== 'online')
+    const todayOnline = todayOrders.filter(o => normalizeOrderType(o.order_type) === 'pos_sale' && normalizeOrderMode(o.order_mode) === 'online')
+    const todayManual = todayOrders.filter(o => normalizeOrderType(o.order_type) === 'manual_sale')
+    const todayOfflineRevenue = todayOffline.reduce((s, o) => s + toNumber(o.total, 0), 0)
+    const todayOnlineRevenue = todayOnline.reduce((s, o) => s + toNumber(o.total, 0), 0)
+    const todayManualRevenue = todayManual.reduce((s, o) => s + toNumber(o.total, 0), 0)
+
     const monthlyRevenue = billableCompleted.filter(o => toLocalMonthKey(o.created_at) === monthKey).reduce((s, o) => s + toNumber(o.total, 0), 0)
 
     // Item-level analytics
@@ -375,6 +423,15 @@ export default function Dashboard() {
     return {
       totalCompletedRevenue: completedRevenue,
       todaySales,
+      todayCompletedOrdersCount,
+      todayItemsSold,
+      todayAvgOrderValue,
+      todayHourlyTrend,
+      todayTopProducts,
+      todayBills,
+      todayOfflineRevenue,
+      todayOnlineRevenue,
+      todayManualRevenue,
       pendingOrders: pendingOrders.length,
       onlineRequests: waRequests,
       onlineRequestOrders: waOrders,
@@ -889,6 +946,13 @@ export default function Dashboard() {
     }
   }, [sidebarCollapsed])
 
+  // Auto-refresh today's sales data every 30 seconds
+  useEffect(() => {
+    if (tab !== 'pos_analytics' || posAnalyticsTab !== 'today') return
+    const interval = setInterval(() => { void loadData() }, 30000)
+    return () => clearInterval(interval)
+  }, [tab, posAnalyticsTab, loadData])
+
   if (!isAdmin) return (
     <div className="min-h-screen bg-bgMain flex items-center justify-center p-4">
       <div className="bg-white p-8 rounded-3xl shadow-xl text-center max-w-sm">
@@ -1029,16 +1093,16 @@ export default function Dashboard() {
             {/* Revenue KPIs - 5 cards */}
             <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
               {[
-                { label: l('Total Revenue', 'à®®à¯Šà®¤à¯à®¤ à®µà®°à¯à®µà®¾à®¯à¯'),    value: formatCurrency(analytics.totalCompletedRevenue), bg: 'bg-emerald-50', color: 'text-emerald-700', icon: <IndianRupee size={16} /> },
-                { label: l("Today's Sales",  'à®‡à®©à¯à®±à¯ˆà®¯ à®µà®¿à®±à¯à®ªà®©à¯ˆ'),  value: formatCurrency(analytics.todaySales),            bg: 'bg-blue-50',    color: 'text-blue-700',    icon: <TrendingUp size={16} /> },
-                { label: l('Offline Revenue', 'à®†à®ƒà®ªà¯à®²à¯ˆà®©à¯ à®µà®°à¯à®µà®¾à®¯à¯'), value: formatCurrency(analytics.posRevenue),           bg: 'bg-orange-50',  color: 'text-orange-700',  icon: <IndianRupee size={16} /> },
-                { label: l('Online Revenue',  'à®†à®©à¯à®²à¯ˆà®©à¯ à®µà®°à¯à®µà®¾à®¯à¯'),  value: formatCurrency(analytics.onlinePosRevenue),     bg: 'bg-cyan-50',    color: 'text-cyan-700',    icon: <IndianRupee size={16} /> },
-                { label: l('Manual Revenue',  'à®•à¯ˆà®®à¯à®±à¯ˆ à®µà®°à¯à®µà®¾à®¯à¯'),   value: formatCurrency(analytics.manualRevenue),        bg: 'bg-violet-50',  color: 'text-violet-700',  icon: <ShoppingCart size={16} /> },
+                { label: l('Total Revenue', 'à®®à¯Šà®¤à¯à®¤ à®µà®°à¯à®µà®¾à®¯à¯'),    value: formatCurrency(analytics.totalCompletedRevenue), from: 'from-emerald-50 via-emerald-50/80 to-teal-50', iconBg: 'from-emerald-400 to-teal-500', icon: <IndianRupee size={16} /> },
+                { label: l("Today's Sales",  'à®‡à®©à¯à®±à¯ˆà®¯ à®µà®¿à®±à¯à®ªà®©à¯ˆ'),  value: formatCurrency(analytics.todaySales),            from: 'from-blue-50 via-blue-50/80 to-indigo-50', iconBg: 'from-blue-400 to-indigo-500', icon: <TrendingUp size={16} /> },
+                { label: l('Offline Revenue', 'à®†à®ƒà®ªà¯à®²à¯ˆà®©à¯ à®µà®°à¯à®µà®¾à®¯à¯'), value: formatCurrency(analytics.posRevenue),           from: 'from-orange-50 via-orange-50/80 to-amber-50', iconBg: 'from-orange-400 to-amber-500', icon: <IndianRupee size={16} /> },
+                { label: l('Online Revenue',  'à®†à®©à¯à®²à¯ˆà®©à¯ à®µà®°à¯à®µà®¾à®¯à¯'),  value: formatCurrency(analytics.onlinePosRevenue),     from: 'from-cyan-50 via-cyan-50/80 to-sky-50', iconBg: 'from-cyan-400 to-sky-500', icon: <IndianRupee size={16} /> },
+                { label: l('Manual Revenue',  'à®•à¯ˆà®®à¯à®±à¯ˆ à®µà®°à¯à®µà®¾à®¯à¯'),   value: formatCurrency(analytics.manualRevenue),        from: 'from-violet-50 via-violet-50/80 to-purple-50', iconBg: 'from-violet-400 to-purple-500', icon: <ShoppingCart size={16} /> },
               ].map((card, i) => (
-                <div key={i} className="bg-white rounded-2xl border border-[#EAD7B7]/30 p-4 shadow-sm">
+                <div key={i} className={`bg-gradient-to-br ${card.from} rounded-2xl border border-white/40 p-4 shadow-sm backdrop-blur-sm`}>
                   <div className="flex items-center justify-between gap-1 mb-2">
                     <p className="text-[10px] uppercase font-black text-[#5F6D59] tracking-wider leading-tight">{card.label}</p>
-                    <div className={`w-7 h-7 rounded-xl ${card.bg} flex items-center justify-center ${card.color} shrink-0`}>{card.icon}</div>
+                    <div className={`w-7 h-7 rounded-xl bg-gradient-to-br ${card.iconBg} flex items-center justify-center text-white shrink-0 shadow-sm`}>{card.icon}</div>
                   </div>
                   <p className="text-[20px] font-black text-[#2C392A] break-words leading-tight">{card.value}</p>
                 </div>
@@ -1723,6 +1787,117 @@ export default function Dashboard() {
                       )}
                     </div>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Today's Sales sub-tab */}
+            {posAnalyticsTab === 'today' && (
+              <div className="space-y-6">
+                {/* Key metrics row */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  {[
+                    { label: "Today's Revenue", value: formatCurrency(analytics.todaySales), icon: <IndianRupee size={18} />, from: 'from-emerald-500 to-teal-600', to: 'via-emerald-600/40' },
+                    { label: 'Orders', value: String(analytics.todayCompletedOrdersCount), icon: <ShoppingCart size={18} />, from: 'from-blue-500 to-indigo-600', to: 'via-indigo-600/40' },
+                    { label: 'Items Sold', value: String(Math.round(analytics.todayItemsSold)), icon: <Package size={18} />, from: 'from-violet-500 to-purple-600', to: 'via-purple-600/40' },
+                    { label: 'Avg Order', value: formatCurrency(analytics.todayAvgOrderValue), icon: <TrendingUp size={18} />, from: 'from-amber-500 to-orange-600', to: 'via-orange-600/40' },
+                  ].map((card, i) => (
+                    <div key={i} className={`relative overflow-hidden rounded-2xl p-5 shadow-lg border border-white/20 bg-gradient-to-br ${card.from}`}>
+                      <div className="absolute inset-0 bg-gradient-to-tl from-white/30 via-white/10 to-transparent" />
+                      <div className="relative z-10">
+                        <div className="flex items-center justify-between mb-3">
+                          <p className="text-[10px] uppercase font-black text-white/80 tracking-wider">{card.label}</p>
+                          <div className="w-9 h-9 rounded-xl bg-white/25 backdrop-blur-sm flex items-center justify-center text-white shadow-sm">{card.icon}</div>
+                        </div>
+                        <p className="text-[26px] font-extrabold text-white drop-shadow-sm">{card.value}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Hourly trend + Top products */}
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                  <div className="xl:col-span-2 bg-white rounded-2xl border border-[#EAD7B7]/30 p-5 shadow-sm">
+                    <h3 className="text-[15px] font-bold text-[#2C392A] mb-4">Hourly Sales Trend</h3>
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={analytics.todayHourlyTrend.filter(h => h.revenue > 0)}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
+                          <XAxis dataKey="hour" tick={{ fill: '#6B7280', fontSize: 10, fontWeight: 600 }} axisLine={false} tickLine={false} interval={0} angle={-45} textAnchor="end" height={50} />
+                          <YAxis hide />
+                          <Tooltip cursor={{ fill: '#F9FAFB' }} formatter={(value) => formatCurrency(toNumber(value as number | string, 0))} />
+                          <Bar dataKey="revenue" fill="url(#todayGrad)" radius={[4, 4, 0, 0]} barSize={20} />
+                          <defs>
+                            <linearGradient id="todayGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#7DAA8F" />
+                              <stop offset="100%" stopColor="#2C392A" />
+                            </linearGradient>
+                          </defs>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                    {analytics.todayHourlyTrend.filter(h => h.revenue > 0).length === 0 && (
+                      <p className="text-center text-[13px] text-[#5F6D59] py-8">No sales recorded today yet.</p>
+                    )}
+                  </div>
+
+                  <div className="bg-white rounded-2xl border border-[#EAD7B7]/30 p-5 shadow-sm">
+                    <h3 className="text-[15px] font-bold text-[#2C392A] mb-4">Top Products Today</h3>
+                    <div className="space-y-3">
+                      {analytics.todayTopProducts.map((p, i) => (
+                        <div key={i} className="flex items-center justify-between bg-[#F7F6F2] p-3 rounded-xl">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[13px] font-bold text-[#2C392A] truncate">{p.name}</p>
+                            <p className="text-[11px] text-[#5F6D59]">{Math.round(p.qty)} sold</p>
+                          </div>
+                          <p className="text-[13px] font-black text-[#7DAA8F] ml-2">{formatCurrency(p.revenue)}</p>
+                        </div>
+                      ))}
+                      {analytics.todayTopProducts.length === 0 && (
+                        <p className="text-center text-[13px] text-[#5F6D59] py-6">No products sold yet today.</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Today's latest bills */}
+                <div className="bg-white rounded-2xl border border-[#EAD7B7]/30 p-5 shadow-sm">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-[15px] font-bold text-[#2C392A]">Today's Bills</h3>
+                    <span className="text-[11px] font-bold text-[#7DAA8F]">{analytics.todayCompletedOrdersCount} orders</span>
+                  </div>
+                  {analytics.todayBills.length > 0 ? (
+                    <div className="overflow-x-auto rounded-xl border border-[#EAD7B7]/30">
+                      <table className="w-full min-w-[480px] text-[12px]">
+                        <thead className="bg-[#F7F6F2] text-[10px] uppercase tracking-wider text-[#5F6D59]">
+                          <tr>
+                            <th className="px-3 py-2.5 font-black text-left">Invoice</th>
+                            <th className="px-3 py-2.5 font-black text-left">Customer</th>
+                            <th className="px-3 py-2.5 font-black text-left">Total</th>
+                            <th className="px-3 py-2.5 font-black text-left">Time</th>
+                            <th className="px-3 py-2.5 font-black text-left">Type</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#EAD7B7]/20">
+                          {analytics.todayBills.map(o => {
+                            const btLabel = normalizeOrderType(o.order_type) === 'manual_sale' ? 'MANUAL' : normalizeOrderMode(o.order_mode) === 'online' ? 'ONLINE' : 'OFFLINE'
+                            const btClass = normalizeOrderType(o.order_type) === 'manual_sale' ? 'bg-purple-100 text-purple-700' : normalizeOrderMode(o.order_mode) === 'online' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'
+                            return (
+                              <tr key={o.id} className="hover:bg-[#F7F6F2]/50">
+                                <td className="px-3 py-2.5 font-bold text-[#7DAA8F] text-[11px]">{o.invoice_no || '-'}</td>
+                                <td className="px-3 py-2.5 font-semibold text-[#2C392A] max-w-[100px] truncate">{o.customer_name}</td>
+                                <td className="px-3 py-2.5 font-black text-[#2C392A]">{formatCurrency(toNumber(o.total, 0))}</td>
+                                <td className="px-3 py-2.5 text-[#5F6D59] whitespace-nowrap">{new Date(o.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</td>
+                                <td className="px-3 py-2.5"><span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${btClass}`}>{btLabel}</span></td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="text-[13px] text-[#5F6D59] text-center py-4">No bills yet today.</p>
+                  )}
                 </div>
               </div>
             )}
