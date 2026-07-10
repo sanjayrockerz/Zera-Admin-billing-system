@@ -560,22 +560,18 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
 }))
 
 // --- Admin Auth Store ---
+const ADMIN_PORTAL_PASSWORD = '9342489391'
+
 interface AdminAuthState {
   isLoggedIn: boolean
-  login: (shopId: string, password: string) => Promise<boolean>
+  login: (password: string) => Promise<boolean>
   logout: () => void
 }
 
 export const useAdminAuthStore = create<AdminAuthState>()((set) => ({
   isLoggedIn: false,
-  login: async (shopId: string, password: string) => {
-    const { data, error } = await supabase
-      .from('admin_credentials')
-      .select('id')
-      .eq('shop_id', shopId)
-      .eq('password', password)
-      .maybeSingle()
-    if (data && !error) {
+  login: async (password: string) => {
+    if (password === ADMIN_PORTAL_PASSWORD) {
       set({ isLoggedIn: true })
       return true
     }

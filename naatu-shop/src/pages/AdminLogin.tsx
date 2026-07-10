@@ -12,7 +12,6 @@ export default function AdminLogin() {
   const l = (en: string, ta: string) => lang === 'ta' ? ta : en
   const login = useAdminAuthStore((state) => state.login)
 
-  const [shopId, setShopId] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
@@ -24,12 +23,12 @@ export default function AdminLogin() {
     e.preventDefault()
     setError('')
     setLoading(true)
-    const ok = await login(shopId.trim(), password)
+    const ok = await login(password)
     setLoading(false)
     if (ok) {
       navigate(from, { replace: true })
     } else {
-      setError(l('Invalid Shop ID or Password', 'தவறான கடை அடையாளம் அல்லது கடவுச்சொல்'))
+      setError(l('Invalid Password', 'தவறான கடவுச்சொல்'))
     }
   }
 
@@ -58,38 +57,20 @@ export default function AdminLogin() {
 
         {/* Login Form */}
         <form onSubmit={handleSubmit} noValidate className="space-y-4">
-          <p className="text-[13px] font-bold text-textMain">{l('Sign in to Dashboard', 'டாஷ்போர்ட்டில் உள்நுழahui')}</p>
+          <p className="text-[13px] font-bold text-textMain">{l('Enter Portal Password', 'கடவுச்சொல்லை உள்ளிடவும்')}</p>
 
-          {/* Shop ID */}
-          <div>
-            <label className="flex items-center gap-1.5 text-[11px] font-bold text-textMuted uppercase tracking-wide mb-1.5">
-              <Building size={14} />
-              {l('Shop ID', 'கடை அடையாளம்')}
-              <span className="text-red-500 font-black">*</span>
-            </label>
-            <input
-              type="text"
-              autoComplete="username"
-              placeholder="e.g. shopname"
-              className="w-full px-4 py-3 rounded-xl border-2 outline-none text-[13px] transition-colors border-sand focus:border-sageDark"
-              value={shopId}
-              onChange={(e) => { setShopId(e.target.value); setError('') }}
-              disabled={loading}
-            />
-          </div>
-
-          {/* Password */}
+          {/* Password only */}
           <div>
             <label className="flex items-center gap-1.5 text-[11px] font-bold text-textMuted uppercase tracking-wide mb-1.5">
               <Lock size={14} />
-              {l('Password', 'கடவுச்சொல்')}
+              {l('Portal Password', 'நுழைவு கடவுச்சொல்')}
               <span className="text-red-500 font-black">*</span>
             </label>
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
                 autoComplete="current-password"
-                placeholder="Enter password"
+                placeholder="Enter portal password"
                 className="w-full px-4 py-3 rounded-xl border-2 outline-none text-[13px] transition-colors border-sand focus:border-sageDark pr-12"
                 value={password}
                 onChange={(e) => { setPassword(e.target.value); setError('') }}
@@ -125,8 +106,7 @@ export default function AdminLogin() {
           </button>
 
           <p className="text-center text-[11px] text-gray-400 leading-relaxed">
-            {l('Enter your shop credentials to access the admin dashboard.', 'நிர்வாக டாஷ்போர்ட்டில் அணுக உங்கள் கடை கைமுறைகளை உள்ளிடவும்.')}<br />
-            {l('Default: shopname / shopname@cenexa', 'மூலம்: shopname / shopname@cenexa')}
+            {l('Enter the portal password to access the admin dashboard.', 'நிர்வாக டாஷ்போர்ட்டில் அணுக கடவுச்சொல்லை உள்ளிடவும்.')}
           </p>
         </form>
       </div>
