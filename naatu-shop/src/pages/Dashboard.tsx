@@ -1052,7 +1052,7 @@ export default function Dashboard() {
           </button>
         </div>
         {/* Mobile mini-header */}
-        <div className="flex lg:hidden items-center justify-between px-4 py-3 border-b border-white/10">
+        <div className="flex lg:hidden items-center justify-between px-4 py-4 border-b border-white/10">
           <div className="flex items-center gap-2 min-w-0">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white shrink-0 overflow-hidden shadow-sm">
               <img src="/zera-logo.png" alt="Logo" className="w-full h-full object-cover scale-[1.8]" />
@@ -1062,8 +1062,7 @@ export default function Dashboard() {
         </div>
         {/* Nav */}
         <nav
-          className={`flex lg:flex-col overflow-x-auto lg:overflow-x-visible gap-2 px-3 py-2 lg:py-2 lg:flex-grow transition-all duration-300 ${sidebarCollapsed ? 'lg:px-2' : 'lg:px-4'}`}
-          style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
+          className={`grid grid-cols-5 lg:flex lg:flex-col overflow-visible gap-2 px-3 py-3 lg:py-2 lg:flex-grow transition-all duration-300 ${sidebarCollapsed ? 'lg:px-2' : 'lg:px-4'}`}
         >
           {navItems.map(item => (
             <button
@@ -1073,7 +1072,7 @@ export default function Dashboard() {
               className={[
                 'shrink-0 flex flex-col lg:flex-row items-center',
                 'gap-1 lg:gap-3',
-                'w-[64px] h-[64px] lg:h-[48px]',
+                'w-full h-[56px] lg:h-[48px]',
                 sidebarCollapsed ? 'lg:w-[48px] lg:justify-center mx-auto' : 'lg:w-full lg:px-4 lg:justify-start',
                 'px-0 py-1 lg:py-0',
                 'rounded-xl font-medium text-[11px] lg:text-[14px] transition-all overflow-hidden',
@@ -1092,10 +1091,10 @@ export default function Dashboard() {
             className={[
               'shrink-0 flex flex-col lg:flex-row items-center',
               'gap-1 lg:gap-3',
-              'w-[64px] h-[64px] lg:h-[48px]',
+              'w-full h-[56px] lg:h-[48px]',
               sidebarCollapsed ? 'lg:w-[48px] lg:justify-center mx-auto' : 'lg:w-full lg:px-4 lg:justify-start',
               'px-0 py-1 lg:py-0',
-              'rounded-xl font-medium text-[11px] lg:text-[14px] transition-all text-white/70 hover:bg-white/10 hover:text-white lg:mt-auto mb-4 overflow-hidden',
+              'rounded-xl font-medium text-[11px] lg:text-[14px] transition-all text-white/70 hover:bg-white/10 hover:text-white lg:mt-auto mb-1 lg:mb-4 overflow-hidden',
             ].join(' ')}
           >
             <span className="shrink-0"><Power size={20} /></span>
@@ -1674,9 +1673,9 @@ export default function Dashboard() {
               <p className="text-[13px] text-[#6B7280]">Real time store & channel insights</p>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#E7E7E7] pb-4">
+            <div className="flex flex-col gap-4 border-b border-[#E7E7E7] pb-4 md:flex-row md:items-center md:justify-between">
               {/* Sub-tabs */}
-              <div className="flex gap-6">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3 md:flex md:gap-6">
                 {([
                   { id: 'revenue' as const,    label: 'REVENUE' },
                   { id: 'today' as const,      label: 'TODAY\'S SALES' },
@@ -1684,7 +1683,7 @@ export default function Dashboard() {
                   { id: 'coupons' as const,    label: 'COUPONS' },
                 ]).map(({ id, label }) => (
                   <button key={id} onClick={() => setPosAnalyticsTab(id as PosAnalyticsTab)}
-                    className={`pb-4 text-[13px] font-bold tracking-wide transition-colors relative ${posAnalyticsTab === id ? 'text-maroon-dark' : 'text-[#6B7280] hover:text-[#111111]'}`}>
+                    className={`pb-2 md:pb-4 text-left text-[13px] font-bold tracking-wide transition-colors relative ${posAnalyticsTab === id ? 'text-maroon-dark' : 'text-[#6B7280] hover:text-[#111111]'}`}>
                     {label}
                     {posAnalyticsTab === id && <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-maroon-dark rounded-t-md" />}
                   </button>
@@ -1692,9 +1691,9 @@ export default function Dashboard() {
               </div>
 
               {/* Date filter */}
-              <div className="flex items-center gap-4">
-                <div className="flex items-center bg-[#F8F8F8] rounded-full p-1">
-                  <span className="text-[10px] font-bold uppercase text-[#6B7280] ml-3 mr-2">Period:</span>
+              <div className="flex flex-col gap-3 md:items-end">
+                <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-[#F8F8F8] p-2">
+                  <span className="text-[10px] font-bold uppercase text-[#6B7280] ml-1 mr-1">Period:</span>
                   {(['all', 'today', 'week', 'month', 'year'] as const).map(preset => (
                     <button key={preset} type="button" onClick={() => applyAnalyticsPreset(preset)}
                       className={`px-4 py-1.5 rounded-full text-[11px] font-bold uppercase transition-all ${analyticsDatePreset === preset ? 'bg-maroon-dark text-white shadow-sm' : 'text-[#6B7280] hover:text-[#111111]'}`}>
@@ -1702,14 +1701,14 @@ export default function Dashboard() {
                     </button>
                   ))}
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center border border-[#E7E7E7] rounded-xl px-3 py-1.5 bg-white">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 w-full">
+                  <div className="flex items-center border border-[#E7E7E7] rounded-xl px-3 py-2 bg-white min-w-0">
                     <span className="text-[10px] uppercase font-bold text-[#6B7280] mr-2">From:</span>
-                    <input type="date" value={analyticsDateFrom} onChange={e => { setAnalyticsDateFrom(e.target.value); setAnalyticsDatePreset('custom'); }} className="text-[12px] font-semibold text-[#111111] bg-transparent outline-none" />
+                    <input type="date" value={analyticsDateFrom} onChange={e => { setAnalyticsDateFrom(e.target.value); setAnalyticsDatePreset('custom'); }} className="w-full min-w-0 text-[12px] font-semibold text-[#111111] bg-transparent outline-none" />
                   </div>
-                  <div className="flex items-center border border-[#E7E7E7] rounded-xl px-3 py-1.5 bg-white">
+                  <div className="flex items-center border border-[#E7E7E7] rounded-xl px-3 py-2 bg-white min-w-0">
                     <span className="text-[10px] uppercase font-bold text-[#6B7280] mr-2">To:</span>
-                    <input type="date" value={analyticsDateTo} onChange={e => { setAnalyticsDateTo(e.target.value); setAnalyticsDatePreset('custom'); }} className="text-[12px] font-semibold text-[#111111] bg-transparent outline-none" />
+                    <input type="date" value={analyticsDateTo} onChange={e => { setAnalyticsDateTo(e.target.value); setAnalyticsDatePreset('custom'); }} className="w-full min-w-0 text-[12px] font-semibold text-[#111111] bg-transparent outline-none" />
                   </div>
                 </div>
               </div>
@@ -2067,7 +2066,32 @@ export default function Dashboard() {
                     <span className="text-[11px] font-bold text-[#7DAA8F]">{analytics.topProducts.length} products</span>
                   </div>
                   {analytics.topProducts.length > 0 ? (
-                    <div className="overflow-x-auto rounded-xl border border-[#EAD7B7]/30">
+                    <>
+                    <div className="space-y-3 md:hidden">
+                      {analytics.topProducts.slice(0, 50).map((p, i) => (
+                        <div key={`${p.name}-${p.variant || i}`} className="rounded-2xl border border-[#EAD7B7]/30 bg-[#FBFAF6] p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-[13px] font-black text-[#9BAB9A]">#{i + 1}</p>
+                              <p className="text-[16px] font-bold text-[#2C392A] break-words">{p.name}</p>
+                              <p className="text-[13px] text-[#5F6D59]">{p.variant || 'No variant'}</p>
+                            </div>
+                            <p className="text-[14px] font-black text-emerald-700">{formatCurrency(p.revenue)}</p>
+                          </div>
+                          <div className="mt-3 grid grid-cols-2 gap-3 text-[13px]">
+                            <div>
+                              <p className="text-[#9BAB9A] uppercase text-[11px] font-black">Qty Sold</p>
+                              <p className="font-bold text-[#2C392A]">{Math.round(p.qty)}</p>
+                            </div>
+                            <div>
+                              <p className="text-[#9BAB9A] uppercase text-[11px] font-black">Bills</p>
+                              <p className="font-bold text-[#2C392A]">{p.billCount}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="hidden md:block overflow-x-auto rounded-xl border border-[#EAD7B7]/30">
                       <table className="w-full min-w-[580px] text-left text-[12px]">
                         <thead className="bg-[#F7F6F2] text-[10px] uppercase tracking-wider text-[#5F6D59]">
                           <tr>
@@ -2093,6 +2117,7 @@ export default function Dashboard() {
                         </tbody>
                       </table>
                     </div>
+                    </>
                   ) : (
                     <p className="text-center text-[13px] text-[#5F6D59] py-6">No product sales in selected period</p>
                   )}
@@ -2105,7 +2130,25 @@ export default function Dashboard() {
               <div className="bg-white rounded-2xl border border-[#EAD7B7]/30 p-5 shadow-sm">
                 <h3 className="text-base font-black text-[#2C392A] mb-4">{l('Category Analytics', 'à®µà®•à¯ˆ à®ªà®•à¯à®ªà¯à®ªà®¾à®¯à¯à®µà¯')}</h3>
                 {analytics.topCategories.length > 0 ? (
-                  <div className="overflow-x-auto rounded-xl border border-[#EAD7B7]/30">
+                  <>
+                  <div className="space-y-3 md:hidden">
+                    {analytics.topCategories.map((c, i) => (
+                      <div key={c.name} className="rounded-2xl border border-[#EAD7B7]/30 bg-[#FBFAF6] p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-[13px] font-black text-[#9BAB9A]">#{i + 1}</p>
+                            <p className="text-[16px] font-bold text-[#2C392A] break-words">{c.name}</p>
+                          </div>
+                          <p className="text-[14px] font-black text-emerald-700">{formatCurrency(c.revenue)}</p>
+                        </div>
+                        <div className="mt-3">
+                          <p className="text-[#9BAB9A] uppercase text-[11px] font-black">Qty Sold</p>
+                          <p className="font-bold text-[#2C392A]">{Math.round(c.qty)}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="hidden md:block overflow-x-auto rounded-xl border border-[#EAD7B7]/30">
                     <table className="w-full text-left text-[13px]">
                       <thead className="bg-[#F7F6F2] text-[10px] uppercase tracking-wider text-[#5F6D59]">
                         <tr>
@@ -2127,6 +2170,7 @@ export default function Dashboard() {
                       </tbody>
                     </table>
                   </div>
+                  </>
                 ) : (
                   <p className="text-center text-[13px] text-[#5F6D59] py-6">{l('No data in selected period', 'à®¤à¯‡à®°à¯à®¨à¯à®¤ à®•à®¾à®²à®¤à¯à®¤à®¿à®²à¯ à®¤à®°à®µà¯ à®‡à®²à¯à®²à¯ˆ')}</p>
                 )}
@@ -2216,7 +2260,30 @@ export default function Dashboard() {
                       <h3 className="text-[15px] font-bold text-[#2C392A]">All Coupons Performance</h3>
                       <span className="text-[11px] font-bold text-[#7DAA8F]">{analytics.topCoupons.length} coupons</span>
                     </div>
-                    <div className="overflow-x-auto rounded-xl border border-[#EAD7B7]/30">
+                    <div className="space-y-3 md:hidden">
+                      {analytics.topCoupons.map((coupon, i) => (
+                        <div key={coupon.code} className="rounded-2xl border border-[#EAD7B7]/30 bg-[#FBFAF6] p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-[13px] font-black text-[#9BAB9A]">#{i + 1}</p>
+                              <p className="text-[16px] font-bold text-[#2C392A] break-words">{coupon.code}</p>
+                            </div>
+                            <p className="text-[14px] font-black text-emerald-700">{formatCurrency(coupon.discounts)}</p>
+                          </div>
+                          <div className="mt-3 grid grid-cols-2 gap-3 text-[13px]">
+                            <div>
+                              <p className="text-[#9BAB9A] uppercase text-[11px] font-black">Orders</p>
+                              <p className="font-bold text-[#2C392A]">{coupon.usage}</p>
+                            </div>
+                            <div>
+                              <p className="text-[#9BAB9A] uppercase text-[11px] font-black">Avg Discount</p>
+                              <p className="font-semibold text-[#5F6D59]">{coupon.usage > 0 ? formatCurrency(coupon.discounts / coupon.usage) : '-'}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="hidden md:block overflow-x-auto rounded-xl border border-[#EAD7B7]/30">
                       <table className="w-full min-w-[400px] text-left text-[12px]">
                         <thead className="bg-[#F7F6F2] text-[10px] uppercase tracking-wider text-[#5F6D59]">
                           <tr>
@@ -2278,7 +2345,7 @@ export default function Dashboard() {
                   { v: 'manual',  l: l('Manual', 'à®•à¯ˆà®®à¯à®±à¯ˆ') },
                 ] as const).map(({ v, l }) => (
                   <button key={v} type="button" onClick={() => setBillTypeFilter(v)}
-                    className={`px-3 py-1.5 rounded-xl text-[12px] font-black transition-colors ${billTypeFilter === v ? 'bg-[#2C392A] text-white shadow-sm' : 'bg-[#F7F6F2] text-[#5F6D59] hover:bg-[#EAD7B7]/40'}`}>
+                    className={`min-h-[44px] px-3 py-1.5 rounded-xl text-[12px] font-black transition-colors ${billTypeFilter === v ? 'bg-[#2C392A] text-white shadow-sm' : 'bg-[#F7F6F2] text-[#5F6D59] hover:bg-[#EAD7B7]/40'}`}>
                     {l}
                   </button>
                 ))}
@@ -2287,38 +2354,38 @@ export default function Dashboard() {
                 <div className="flex flex-wrap gap-2 items-center">
                   {(['today', 'week', 'month', 'custom'] as const).map(preset => (
                     <button key={preset} type="button" onClick={() => applyDatePreset(preset)}
-                      className={`px-3 py-1.5 rounded-xl text-[12px] font-black transition-colors ${datePreset === preset ? 'bg-[#8B2332] text-white shadow-sm' : 'bg-[#F7F6F2] text-[#5F6D59] hover:bg-[#EAD7B7]/40'}`}>
+                      className={`min-h-[44px] px-3 py-1.5 rounded-xl text-[12px] font-black transition-colors ${datePreset === preset ? 'bg-[#8B2332] text-white shadow-sm' : 'bg-[#F7F6F2] text-[#5F6D59] hover:bg-[#EAD7B7]/40'}`}>
                       {preset === 'today' ? l('Today','à®‡à®©à¯à®±à¯') : preset === 'week' ? l('This Week','à®‡à®¨à¯à®¤ à®µà®¾à®°à®®à¯') : preset === 'month' ? l('This Month','à®‡à®¨à¯à®¤ à®®à®¾à®¤à®®à¯') : l('Custom Range','à®¤à¯‡à®°à¯à®µà¯')}
                     </button>
                   ))}
                   {(search.dateFrom || search.dateTo || datePreset) && (
                     <button type="button" onClick={() => { setDatePreset(''); setSearch(s => ({ ...s, dateFrom: '', dateTo: '' })) }}
-                      className="px-3 py-1.5 rounded-xl text-[12px] font-black text-[#8B2332] hover:bg-[#8B2332]/5">{l('Clear Dates', 'தேதி அழி')}</button>
+                      className="min-h-[44px] px-3 py-1.5 rounded-xl text-[12px] font-black text-[#8B2332] hover:bg-[#8B2332]/5">{l('Clear Dates', 'தேதி அழி')}</button>
                   )}
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                  <input className="rounded-xl bg-[#F7F6F2] px-3 py-2.5 text-[13px] font-semibold text-[#2C392A] placeholder:text-[#8A9384] focus:outline-none focus:ring-2 focus:ring-[#8B2332]/15" placeholder={l('Invoice / Bill No', 'பில் எண்')}
+                  <input className="min-h-[48px] rounded-xl bg-[#F7F6F2] px-3 py-2.5 text-[16px] md:text-[13px] font-semibold text-[#2C392A] placeholder:text-[#8A9384] focus:outline-none focus:ring-2 focus:ring-[#8B2332]/15" placeholder={l('Invoice / Bill No', 'பில் எண்')}
                     value={search.invoiceNo} onChange={e => setSearch(s => ({ ...s, invoiceNo: e.target.value }))} />
-                  <input className="rounded-xl bg-[#F7F6F2] px-3 py-2.5 text-[13px] font-semibold text-[#2C392A] placeholder:text-[#8A9384] focus:outline-none focus:ring-2 focus:ring-[#8B2332]/15" placeholder={l('Customer Name', 'வாடிக்கையாளர் பெயர்')}
+                  <input className="min-h-[48px] rounded-xl bg-[#F7F6F2] px-3 py-2.5 text-[16px] md:text-[13px] font-semibold text-[#2C392A] placeholder:text-[#8A9384] focus:outline-none focus:ring-2 focus:ring-[#8B2332]/15" placeholder={l('Customer Name', 'வாடிக்கையாளர் பெயர்')}
                     value={search.customerName} onChange={e => setSearch(s => ({ ...s, customerName: e.target.value }))} />
-                  <input className="rounded-xl bg-[#F7F6F2] px-3 py-2.5 text-[13px] font-semibold text-[#2C392A] placeholder:text-[#8A9384] focus:outline-none focus:ring-2 focus:ring-[#8B2332]/15" placeholder={l('Mobile Number', 'மொபைல் எண்')}
+                  <input className="min-h-[48px] rounded-xl bg-[#F7F6F2] px-3 py-2.5 text-[16px] md:text-[13px] font-semibold text-[#2C392A] placeholder:text-[#8A9384] focus:outline-none focus:ring-2 focus:ring-[#8B2332]/15" placeholder={l('Mobile Number', 'மொபைல் எண்')}
                     value={search.phone} onChange={e => setSearch(s => ({ ...s, phone: e.target.value }))} />
                   {datePreset === 'custom' ? (
                     <>
-                      <input type="date" className="rounded-xl bg-[#F7F6F2] px-3 py-2.5 text-[13px] font-semibold text-[#2C392A] focus:outline-none focus:ring-2 focus:ring-[#8B2332]/15"
+                      <input type="date" className="min-h-[48px] rounded-xl bg-[#F7F6F2] px-3 py-2.5 text-[16px] md:text-[13px] font-semibold text-[#2C392A] focus:outline-none focus:ring-2 focus:ring-[#8B2332]/15"
                         value={search.dateFrom} onChange={e => setSearch(s => ({ ...s, dateFrom: e.target.value }))} />
-                      <input type="date" className="rounded-xl bg-[#F7F6F2] px-3 py-2.5 text-[13px] font-semibold text-[#2C392A] focus:outline-none focus:ring-2 focus:ring-[#8B2332]/15"
+                      <input type="date" className="min-h-[48px] rounded-xl bg-[#F7F6F2] px-3 py-2.5 text-[16px] md:text-[13px] font-semibold text-[#2C392A] focus:outline-none focus:ring-2 focus:ring-[#8B2332]/15"
                         value={search.dateTo} onChange={e => setSearch(s => ({ ...s, dateTo: e.target.value }))} />
                     </>
                   ) : (
                     <button type="submit" disabled={searchLoading}
-                      className="sm:col-span-2 flex items-center justify-center gap-2 rounded-xl bg-[#8B2332] py-2.5 text-[13px] font-bold text-white shadow-sm transition-colors hover:bg-[#6b1a25] disabled:opacity-60">
+                      className="sm:col-span-2 min-h-[48px] flex items-center justify-center gap-2 rounded-xl bg-[#8B2332] py-2.5 text-[13px] font-bold text-white shadow-sm transition-colors hover:bg-[#6b1a25] disabled:opacity-60">
                       <Search size={14} /> {searchLoading ? l('Searching...','தேடுகிறது...') : l('Search Bills','தேடு')}
                     </button>
                   )}
                   {datePreset === 'custom' && (
                     <button type="submit" disabled={searchLoading}
-                      className="sm:col-span-2 lg:col-span-4 flex items-center justify-center gap-2 rounded-xl bg-[#8B2332] py-2.5 text-[13px] font-bold text-white shadow-sm transition-colors hover:bg-[#6b1a25] disabled:opacity-60">
+                      className="sm:col-span-2 lg:col-span-4 min-h-[48px] flex items-center justify-center gap-2 rounded-xl bg-[#8B2332] py-2.5 text-[13px] font-bold text-white shadow-sm transition-colors hover:bg-[#6b1a25] disabled:opacity-60">
                       <Search size={14} /> {searchLoading ? l('Searching...','தேடுகிறது...') : l('Search Bills','தேடு')}
                     </button>
                   )}
@@ -2333,7 +2400,63 @@ export default function Dashboard() {
                   </button>
                 )}
               </div>
-              <div className="overflow-x-auto rounded-xl border border-[#EAD7B7]/60 bg-[#FBFAF6]">
+              <div className="space-y-3 md:hidden">
+                {filteredSearchResults.slice(0, 50).map(o => {
+                  const billTypeLabel = normalizeOrderType(o.order_type) === 'manual_sale' ? 'MANUAL' : normalizeOrderMode(o.order_mode) === 'online' ? 'ONLINE' : 'OFFLINE'
+                  const billTypeClass = normalizeOrderType(o.order_type) === 'manual_sale' ? 'bg-purple-50 text-purple-700' : normalizeOrderMode(o.order_mode) === 'online' ? 'bg-blue-50 text-blue-700' : 'bg-orange-50 text-orange-700'
+                  return (
+                    <div key={o.id} className="rounded-2xl border border-[#EAD7B7]/60 bg-[#FBFAF6] p-4 space-y-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-[13px] font-black text-[#2C392A] break-words">{o.invoice_no || '—'}</p>
+                          <p className="text-[13px] text-[#5F6D59]">{new Date(o.created_at).toLocaleDateString('en-IN')}</p>
+                        </div>
+                        <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase ${billTypeClass}`}>{billTypeLabel}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 text-[13px]">
+                        <div>
+                          <p className="text-[#9BAB9A] uppercase text-[11px] font-black">Customer</p>
+                          <p className="font-bold text-[#2C392A] break-words">{o.customer_name || '—'}</p>
+                        </div>
+                        <div>
+                          <p className="text-[#9BAB9A] uppercase text-[11px] font-black">Phone</p>
+                          <p className="font-semibold text-[#5F6D59] break-words">{o.phone || '—'}</p>
+                        </div>
+                        <div>
+                          <p className="text-[#9BAB9A] uppercase text-[11px] font-black">Total</p>
+                          <p className="font-black text-[#2C392A]">{formatCurrency(toNumber(o.total, 0))}</p>
+                        </div>
+                        <div>
+                          <p className="text-[#9BAB9A] uppercase text-[11px] font-black">Coupon</p>
+                          <p className="font-semibold text-[#5F6D59] break-words">{o.coupon_code || '—'}</p>
+                        </div>
+                        <div>
+                          <p className="text-[#9BAB9A] uppercase text-[11px] font-black">Discount</p>
+                          <p className="font-semibold text-emerald-700">{o.discount_amount > 0 ? `-${formatCurrency(o.discount_amount)}` : '—'}</p>
+                        </div>
+                        <div>
+                          <p className="text-[#9BAB9A] uppercase text-[11px] font-black">Delivery</p>
+                          <p className="font-semibold text-[#2C392A]">{o.delivery_charge > 0 ? formatCurrency(o.delivery_charge) : '—'}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <select value={normalizeStatus(o.status)} onChange={e => void updateOrderStatus(o.id, e.target.value)}
+                          className={`min-h-[44px] flex-1 cursor-pointer rounded-xl border px-3 py-2 text-[12px] font-black outline-none ${normalizeStatus(o.status) === 'completed' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700'}`}>
+                          <option value="pending">{l('Pending', 'à®¨à®¿à®²à¯à®µà¯ˆ')}</option>
+                          <option value="completed">{l('Completed', 'à®®à¯à®Ÿà®¿à®¨à¯à®¤à®¤à¯')}</option>
+                        </select>
+                        <button onClick={() => void deleteOrder(o.id, o.invoice_no)} className="h-11 w-11 rounded-xl border border-[#EAD7B7]/60 text-[#8B2332] transition-colors hover:bg-[#8B2332]/5" title="Delete Order">
+                          <Trash2 size={14} className="mx-auto" />
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+                {filteredSearchResults.length === 0 && (
+                  <div className="rounded-2xl border border-[#EAD7B7]/60 bg-[#FBFAF6] px-4 py-8 text-center text-[#5F6D59]">{l('No matching bills', 'பில்கள் இல்லை')}</div>
+                )}
+              </div>
+              <div className="hidden md:block overflow-x-auto rounded-xl border border-[#EAD7B7]/60 bg-[#FBFAF6]">
                 <table className="w-full min-w-[800px] text-left text-[13px]">
                   <thead className="bg-[#F7F6F2] text-[10px] uppercase tracking-wider text-[#5F6D59]">
                     <tr>
