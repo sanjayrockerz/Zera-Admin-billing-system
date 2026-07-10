@@ -1070,10 +1070,10 @@ export default function Dashboard() {
               onClick={() => setTab(item.id)}
               title={item.label}
               className={[
-                'shrink-0 flex flex-col lg:flex-row items-center',
+                'shrink-0 flex flex-col lg:flex-row items-center justify-center lg:justify-start',
                 'gap-1 lg:gap-3',
                 'w-full h-[56px] lg:h-[48px]',
-                sidebarCollapsed ? 'lg:w-[48px] lg:justify-center mx-auto' : 'lg:w-full lg:px-4 lg:justify-start',
+                sidebarCollapsed ? 'lg:w-[48px] lg:justify-center mx-auto' : 'lg:w-full lg:px-4',
                 'px-0 py-1 lg:py-0',
                 'rounded-xl font-medium text-[11px] lg:text-[14px] transition-all overflow-hidden',
                 tab === item.id ? 'bg-white text-maroon-dark shadow-sm' : 'text-white/70 hover:bg-white/10 hover:text-white',
@@ -1089,10 +1089,10 @@ export default function Dashboard() {
           <button
             onClick={() => {/* logout logic later */}}
             className={[
-              'shrink-0 flex flex-col lg:flex-row items-center',
+              'shrink-0 flex flex-col lg:flex-row items-center justify-center lg:justify-start',
               'gap-1 lg:gap-3',
               'w-full h-[56px] lg:h-[48px]',
-              sidebarCollapsed ? 'lg:w-[48px] lg:justify-center mx-auto' : 'lg:w-full lg:px-4 lg:justify-start',
+              sidebarCollapsed ? 'lg:w-[48px] lg:justify-center mx-auto' : 'lg:w-full lg:px-4',
               'px-0 py-1 lg:py-0',
               'rounded-xl font-medium text-[11px] lg:text-[14px] transition-all text-white/70 hover:bg-white/10 hover:text-white lg:mt-auto mb-1 lg:mb-4 overflow-hidden',
             ].join(' ')}
