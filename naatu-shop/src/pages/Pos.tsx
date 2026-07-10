@@ -692,28 +692,28 @@ export default function Pos(props: PosProps = {}) {
                 <Receipt size={16} className="text-[#8B2332]" />
                 Order Items
               </h3>
-              <div className="grid grid-cols-2 md:flex md:flex-wrap items-stretch gap-2">
+              <div className="grid grid-cols-2 md:flex md:items-stretch gap-2">
                 <button 
                   onClick={clearAll}
-                  className="min-h-[44px] w-full px-3 py-2 rounded-lg border border-[#EAD7B7]/60 text-[12px] md:text-[11px] font-black text-[#5F6D59] hover:bg-[#F7F6F2] transition-colors flex items-center justify-center gap-1.5 text-center"
+                  className="min-h-[44px] w-full md:w-auto px-3 py-2 rounded-lg border border-[#EAD7B7]/60 text-[12px] md:text-[11px] font-black text-[#5F6D59] hover:bg-[#F7F6F2] transition-colors flex items-center justify-center gap-1.5 text-center md:flex-1"
                 >
                   <Trash2 size={12} /> CLEAR ORDER
                 </button>
                 <button 
                   onClick={() => setCatalogOpen(true)}
-                  className="min-h-[44px] w-full px-3 py-2 rounded-lg border border-[#8B2332] text-[#8B2332] text-[12px] md:text-[11px] font-black hover:bg-[#8B2332]/5 transition-colors flex items-center justify-center gap-1.5 text-center"
+                  className="min-h-[44px] w-full md:w-auto px-3 py-2 rounded-lg border border-[#8B2332] text-[#8B2332] text-[12px] md:text-[11px] font-black hover:bg-[#8B2332]/5 transition-colors flex items-center justify-center gap-1.5 text-center md:flex-1"
                 >
                   <Search size={12} /> SEARCH CATALOG
                 </button>
                 <button 
                   onClick={() => setAddProductOpen(true)}
-                  className="min-h-[44px] w-full px-3 py-2 rounded-lg bg-[#8B2332] text-white text-[12px] md:text-[11px] font-black hover:bg-[#6b1a25] transition-colors flex items-center justify-center gap-1.5 text-center"
+                  className="min-h-[44px] w-full md:w-auto px-3 py-2 rounded-lg bg-[#8B2332] text-white text-[12px] md:text-[11px] font-black hover:bg-[#6b1a25] transition-colors flex items-center justify-center gap-1.5 text-center md:flex-1"
                 >
                   <Plus size={12} /> ADD TO CATALOG
                 </button>
                 <button 
                   onClick={addManualItem}
-                  className="min-h-[44px] w-full px-3 py-2 rounded-lg border border-[#8B2332] text-[#8B2332] text-[12px] md:text-[11px] font-black hover:bg-[#8B2332]/5 transition-colors flex items-center justify-center gap-1.5 text-center"
+                  className="min-h-[44px] w-full md:w-auto px-3 py-2 rounded-lg border border-[#8B2332] text-[#8B2332] text-[12px] md:text-[11px] font-black hover:bg-[#8B2332]/5 transition-colors flex items-center justify-center gap-1.5 text-center md:flex-1"
                 >
                   + ADD CUSTOM ITEM
                 </button>
