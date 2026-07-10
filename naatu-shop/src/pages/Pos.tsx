@@ -464,6 +464,7 @@ export default function Pos(props: PosProps = {}) {
 
   const sendPosWhatsApp = (inv: InvoiceSnap) => {
     const waLink = toWhatsAppUrl(inv.phone || customer.phone || '')
+    const invoiceUrl = `${window.location.origin}/invoice/${inv.invoiceNo}`
     const text = encodeURIComponent(buildProfessionalWhatsAppMessage({
       customerName: inv.customerName,
       phone: inv.phone,
@@ -483,7 +484,7 @@ export default function Pos(props: PosProps = {}) {
       shipping: inv.shipping,
       gstAmount: inv.gstAmount,
       total: inv.total,
-    }))
+    }) + `\n\n📄 View your detailed invoice here:\n${invoiceUrl}\n\nYou can download the PDF from the invoice page.`)
     window.open(`${waLink}?text=${text}`, '_blank')
   }
 
@@ -1085,34 +1086,14 @@ export default function Pos(props: PosProps = {}) {
             
             {/* Action Buttons Fixed Footer */}
             <div className="p-4 md:p-5 border-t border-[#EAD7B7]/60 bg-white shrink-0 sticky bottom-0">
-              <div className="grid grid-cols-[1fr_1fr] gap-2">
-                <button 
-                  type="button"
-                  onClick={generateBill}
-                  disabled={saving}
-                  className="col-span-2 min-h-[48px] py-3.5 bg-[#4CAF50] hover:bg-[#45a049] text-white rounded-xl text-[13px] font-black uppercase tracking-wider transition-colors disabled:opacity-50"
-                >
-                  {saving ? 'Processing...' : 'Complete Sale'}
-                </button>
-                <button 
-                  type="button"
-                  onClick={() => window.print()}
-                  className="min-h-[44px] py-2.5 bg-white border border-[#EAD7B7]/60 text-[#2C392A] rounded-xl text-[12px] md:text-[11px] font-black uppercase hover:bg-[#FAFAFA] transition-colors"
-                >
-                  Print Bill
-                </button>
-                <button 
-                  type="button"
-                  onClick={() => {
-                    alert('Draft saved locally!');
-                    setItems([]);
-                    setCustomer({ name: '', phone: '', address: '' });
-                  }}
-                  className="min-h-[44px] py-2.5 bg-white border border-[#EAD7B7]/60 text-[#2C392A] rounded-xl text-[12px] md:text-[11px] font-black uppercase hover:bg-[#FAFAFA] transition-colors"
-                >
-                  Save Draft
-                </button>
-              </div>
+              <button 
+                type="button"
+                onClick={generateBill}
+                disabled={saving}
+                className="w-full min-h-[48px] py-3.5 bg-[#4CAF50] hover:bg-[#45a049] text-white rounded-xl text-[13px] font-black uppercase tracking-wider transition-colors disabled:opacity-50"
+              >
+                {saving ? 'Processing...' : 'Complete Sale'}
+              </button>
             </div>
           </div>
         </div>

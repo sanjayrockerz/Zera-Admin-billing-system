@@ -10,15 +10,18 @@ interface AddProductModalProps {
 }
 
 export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProductModalProps) {
-  const { fetchProducts } = useProductStore()
+  const { fetchProducts, products } = useProductStore()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [categoryMode, setCategoryMode] = useState<'select' | 'new'>('select')
   const [formData, setFormData] = useState({
     name: '',
-    category: 'Manual',
+    category: '',
     price: '',
     stock: '10'
   })
+
+  const existingCategories = Array.from(new Set(products.filter(p => p.category).map(p => p.category))).filter(Boolean).sort()
 
   if (!isOpen) return null
 
@@ -80,12 +83,42 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-[10px] font-black text-[#5F6D59] tracking-wider uppercase mb-1.5">Category</label>
-              <input 
-                type="text" 
-                value={formData.category}
-                onChange={e => setFormData({...formData, category: e.target.value})}
-                className="w-full px-4 py-3 bg-[#F7F6F2] border border-[#EAD7B7]/60 rounded-xl focus:outline-none focus:border-[#8B2332] text-[13px] font-bold"
-              />
+              {categoryMode === 'select' ? (
+                <div className="flex gap-1">
+                  <select
+                    value={formData.category}
+                    onChange={e => setFormData({...formData, category: e.target.value})}
+                    className="flex-1 w-full px-4 py-3 bg-[#F7F6F2] border border-[#EAD7B7]/60 rounded-xl focus:outline-none focus:border-[#8B2332] text-[13px] font-bold appearance-none"
+                  >
+                    <option value="">Select category</option>
+                    {existingCategories.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => { setCategoryMode('new'); setFormData(f => ({...f, category: ''})) }}
+                    className="px-2 py-3 text-[10px] font-black text-[#8B2332] bg-[#F7F6F2] border border-[#EAD7B7]/60 rounded-xl hover:bg-[#EAD7B7]/40 transition-colors shrink-0"
+                    title="Add new category"
+                  >+</button>
+                </div>
+              ) : (
+                <div className="flex gap-1">
+                  <input
+                    type="text"
+                    value={formData.category}
+                    onChange={e => setFormData({...formData, category: e.target.value})}
+                    className="flex-1 w-full px-4 py-3 bg-[#F7F6F2] border border-[#EAD7B7]/60 rounded-xl focus:outline-none focus:border-[#8B2332] text-[13px] font-bold"
+                    placeholder="Type new category"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => { setCategoryMode('select'); setFormData(f => ({...f, category: ''})) }}
+                    className="px-2 py-3 text-[10px] font-black text-[#5F6D59] bg-[#F7F6F2] border border-[#EAD7B7]/60 rounded-xl hover:bg-[#EAD7B7]/40 transition-colors shrink-0"
+                    title="Pick from existing"
+                  >↩</button>
+                </div>
+              )}
             </div>
             <div>
               <label className="block text-[10px] font-black text-[#5F6D59] tracking-wider uppercase mb-1.5">Price (₹)</label>

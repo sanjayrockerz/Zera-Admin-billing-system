@@ -5,10 +5,10 @@ import {
   Package, IndianRupee, Search, RefreshCw, ShieldCheck, ShieldOff, Trophy,
   MessageCircle, ChevronDown,
 } from 'lucide-react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { debounce } from '../lib/debounce'
-import { useAuthStore, useProductStore, type Product } from '../store/store'
+import { useAuthStore, useProductStore, useAdminAuthStore, type Product } from '../store/store'
 import { useLangStore } from '../store/langStore'
 import { uploadProductImage } from '../lib/storage'
 import { formatCurrency, normalizeOrderMode, normalizeUnitType, toNumber, type UnitType } from '../lib/retail'
@@ -110,6 +110,7 @@ export default function Dashboard() {
   const { user } = useAuthStore()
   const { products, fetchProducts } = useProductStore()
   const location = useLocation()
+  const navigate = useNavigate()
   const [tab, setTab] = useState<TabKey>(() => {
     if (location.pathname === '/whatsapp-center') return 'whatsapp'
     if (location.pathname === '/pos-analytics') return 'pos_analytics'
@@ -149,6 +150,7 @@ export default function Dashboard() {
   const [datePreset, setDatePreset] = useState<'today' | 'week' | 'month' | 'custom' | ''>('')
   const [searchResults, setSearchResults] = useState<DashboardOrder[]>([])
   const [searchLoading, setSearchLoading] = useState(false)
+  const [todayBillsSearch, setTodayBillsSearch] = useState('')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try {
       return window.localStorage.getItem('dashboard-sidebar-collapsed') === '1'
@@ -366,8 +368,8 @@ export default function Dashboard() {
       const k = toLocalMonthKey(o.created_at)
       monthlyRevenueMap.set(k, (monthlyRevenueMap.get(k) || 0) + toNumber(o.total, 0))
     })
-    const monthlyTrend = Array.from({ length: 6 }, (_, i) => {
-      const d = new Date(); d.setMonth(d.getMonth() - (5 - i))
+    const monthlyTrend = Array.from({ length: 12 }, (_, i) => {
+      const d = new Date(); d.setMonth(d.getMonth() - (11 - i))
       const k = toLocalMonthKey(d)
       return { key: k, month: d.toLocaleDateString('en-IN', { month: 'short' }), revenue: monthlyRevenueMap.get(k) || 0 }
     })
@@ -1087,7 +1089,10 @@ export default function Dashboard() {
           ))}
           
           <button
-            onClick={() => {/* logout logic later */}}
+            onClick={() => {
+              useAdminAuthStore.getState().logout()
+              navigate('/admin-login', { replace: true })
+            }}
             className={[
               'shrink-0 flex flex-col lg:flex-row items-center justify-center lg:justify-start',
               'gap-1 lg:gap-3',
@@ -1767,14 +1772,14 @@ export default function Dashboard() {
                       <span className="text-[24px] font-bold text-[#111111]">{formatCurrency(analytics.totalCompletedRevenue)}</span>
                       <span className="text-[12px] font-bold text-maroon-dark bg-red-50 px-2 py-1 rounded-md mb-1">Avg {formatCurrency(analytics.monthlyRevenue || 0)}/mo</span>
                     </div>
-                    <div className="h-64">
+                    <div className="h-48">
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={analytics.monthlyTrend}>
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
-                          <XAxis dataKey="month" tick={{ fill: '#6B7280', fontSize: 11, fontWeight: 700 }} axisLine={false} tickLine={false} />
+                          <XAxis dataKey="month" tick={{ fill: '#6B7280', fontSize: 9, fontWeight: 700 }} axisLine={false} tickLine={false} interval={0} angle={-45} textAnchor="end" height={60} />
                           <YAxis hide />
                           <Tooltip cursor={{ fill: '#F9FAFB' }} formatter={(value) => formatCurrency(toNumber(value as number | string, 0))} />
-                          <Bar dataKey="revenue" fill="#8B1C31" radius={[4, 4, 0, 0]} barSize={24} />
+                          <Bar dataKey="revenue" fill="#8B1C31" radius={[4, 4, 0, 0]} barSize={12} />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
@@ -1831,9 +1836,14 @@ export default function Dashboard() {
                         <h3 className="text-[16px] font-bold text-[#111111]">Revenue Trend This Week</h3>
                         <p className="mt-1 text-[12px] text-[#6B7280]">Monday to Sunday sales view for the current week.</p>
                       </div>
-                      <span className="rounded-full bg-[#F7F6F2] px-3 py-1 text-[11px] font-bold text-[#8B2332]">
-                        Today: {formatCurrency(analytics.todaySales)}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="rounded-full bg-[#F7F6F2] px-3 py-1 text-[11px] font-bold text-[#8B2332]">
+                          Week {(() => { const now = new Date(); const start = new Date(now.getFullYear(), 0, 1); const diff = Math.floor((now.getTime() - start.getTime()) / 86400000); return Math.ceil((diff + start.getDay() + 1) / 7) })()} of {new Date().getFullYear()}
+                        </span>
+                        <span className="rounded-full bg-[#F7F6F2] px-3 py-1 text-[11px] font-bold text-[#8B2332]">
+                          Today: {formatCurrency(analytics.todaySales)}
+                        </span>
+                      </div>
                     </div>
                     <div className="h-64">
                       <ResponsiveContainer width="100%" height="100%">
@@ -1954,7 +1964,18 @@ export default function Dashboard() {
                     <h3 className="text-[15px] font-bold text-[#2C392A]">Today's Bills</h3>
                     <span className="text-[11px] font-bold text-[#7DAA8F]">{analytics.todayCompletedOrdersCount} orders</span>
                   </div>
-                  {analytics.todayBills.length > 0 ? (
+                  <div className="mb-3">
+                    <input
+                      type="text"
+                      placeholder="Search by invoice number..."
+                      value={todayBillsSearch}
+                      onChange={e => setTodayBillsSearch(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-[#F7F6F2] border border-[#EAD7B7]/60 rounded-xl text-[13px] font-bold text-[#2C392A] placeholder:text-[#8A9384] focus:outline-none focus:border-[#8B2332] transition-colors"
+                    />
+                  </div>
+                  {(() => {
+                    const filteredBills = analytics.todayBills.filter(b => !todayBillsSearch || b.invoice_no?.toLowerCase().includes(todayBillsSearch.toLowerCase()))
+                    return filteredBills.length > 0 ? (
                     <div className="overflow-x-auto rounded-xl border border-[#EAD7B7]/30">
                       <table className="w-full min-w-[480px] text-[12px]">
                         <thead className="bg-[#F7F6F2] text-[10px] uppercase tracking-wider text-[#5F6D59]">
@@ -1967,7 +1988,7 @@ export default function Dashboard() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-[#EAD7B7]/20">
-                          {analytics.todayBills.map(o => {
+                          {filteredBills.map(o => {
                             const btLabel = normalizeOrderType(o.order_type) === 'manual_sale' ? 'MANUAL' : normalizeOrderMode(o.order_mode) === 'online' ? 'ONLINE' : 'OFFLINE'
                             const btClass = normalizeOrderType(o.order_type) === 'manual_sale' ? 'bg-purple-100 text-purple-700' : normalizeOrderMode(o.order_mode) === 'online' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'
                             return (
@@ -1984,8 +2005,8 @@ export default function Dashboard() {
                       </table>
                     </div>
                   ) : (
-                    <p className="text-[13px] text-[#5F6D59] text-center py-4">No bills yet today.</p>
-                  )}
+                    <p className="text-[13px] text-[#5F6D59] text-center py-4">{todayBillsSearch ? 'No bills match your search.' : 'No bills yet today.'}</p>
+                  )})()}
                 </div>
               </div>
             )}
@@ -3002,50 +3023,50 @@ export default function Dashboard() {
         {/* â”€â”€ COUPONS TAB â”€â”€ */}
         {/* â”€â”€ COUPONS TAB â”€â”€ */}
         {tab === 'coupons' && (
-          <div className="space-y-6">
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="space-y-2">
-                  <h2 className="text-[28px] lg:text-[32px] leading-none font-black text-[#111111]">{l('Coupon Management', 'கூப்பன் மேலாண்மை')}</h2>
-                  <p className="max-w-2xl text-[13px] lg:text-[14px] font-medium text-[#6C665C]">
-                    {l('Create and manage discount codes for the admin dashboard. Coupon discounts apply only to product subtotal, not delivery charge.', 'பொருட்களின் subtotal-க்கு மட்டும் கூப்பன் தள்ளுபடி பொருந்தும். delivery charge-க்கு இல்லை.')}
+          <div className="space-y-4">
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <h2 className="text-[22px] lg:text-[24px] leading-none font-black text-[#111111]">{l('Coupon Management', 'கூப்பன் மேலாண்மை')}</h2>
+                  <p className="max-w-2xl text-[12px] lg:text-[12px] font-medium text-[#6C665C]">
+                    {l('Create and manage discount codes. Applies to product subtotal only.', 'பொருட்களின் subtotal-க்கு மட்டும் கூப்பன் தள்ளுபடி பொருந்தும்.')}
                   </p>
                 </div>
                 <button
                   onClick={() => void loadCoupons()}
-                  className="inline-flex items-center gap-2 rounded-full border border-[#EAD7B7] bg-[#FBFAF6] px-4 py-2.5 text-[13px] font-black text-[#8B2332] shadow-sm transition-colors hover:bg-[#F7F1E7]"
+                  className="inline-flex items-center gap-2 rounded-full border border-[#EAD7B7] bg-[#FBFAF6] px-3 py-2 text-[11px] font-black text-[#8B2332] shadow-sm transition-colors hover:bg-[#F7F1E7]"
                 >
-                  <RefreshCw size={14} />
+                  <RefreshCw size={12} />
                   Refresh
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl border border-[#EAD7B7] bg-[#FBFAF6] px-4 py-4 shadow-sm">
-                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#8B2332]">Total Coupons</p>
-                  <p className="mt-2 text-[26px] font-black text-[#2C392A]">{coupons.length}</p>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <div className="rounded-xl border border-[#EAD7B7] bg-[#FBFAF6] px-3 py-3 shadow-sm">
+                  <p className="text-[10px] font-black uppercase tracking-[0.15em] text-[#8B2332]">Total Coupons</p>
+                  <p className="mt-1 text-[20px] font-black text-[#2C392A]">{coupons.length}</p>
                 </div>
-                <div className="rounded-2xl border border-[#EAD7B7] bg-[#FBFAF6] px-4 py-4 shadow-sm">
-                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#8B2332]">Active</p>
-                  <p className="mt-2 text-[26px] font-black text-[#8B2332]">{coupons.filter(c => c.is_active).length}</p>
+                <div className="rounded-xl border border-[#EAD7B7] bg-[#FBFAF6] px-3 py-3 shadow-sm">
+                  <p className="text-[10px] font-black uppercase tracking-[0.15em] text-[#8B2332]">Active</p>
+                  <p className="mt-1 text-[20px] font-black text-[#8B2332]">{coupons.filter(c => c.is_active).length}</p>
                 </div>
-                <div className="rounded-2xl border border-[#EAD7B7] bg-[#FBFAF6] px-4 py-4 shadow-sm">
-                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#8B2332]">Used</p>
-                  <p className="mt-2 text-[26px] font-black text-[#2C392A]">{coupons.reduce((acc, c) => acc + (c.usage_count || 0), 0)}</p>
+                <div className="rounded-xl border border-[#EAD7B7] bg-[#FBFAF6] px-3 py-3 shadow-sm">
+                  <p className="text-[10px] font-black uppercase tracking-[0.15em] text-[#8B2332]">Used</p>
+                  <p className="mt-1 text-[20px] font-black text-[#2C392A]">{coupons.reduce((acc, c) => acc + (c.usage_count || 0), 0)}</p>
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-[#E7CFAA] bg-[#FFF6E7] px-4 py-3 text-[13px] font-bold text-[#8B2332] shadow-sm">
-                {l('Coupon discount applies to product subtotal only - not delivery charge.', 'கூப்பன் தள்ளுபடி பொருட்களின் subtotal-க்கு மட்டும் பொருந்தும். delivery charge-க்கு இல்லை.')}
+              <div className="rounded-xl border border-[#E7CFAA] bg-[#FFF6E7] px-3 py-2 text-[11px] font-bold text-[#8B2332] shadow-sm">
+                {l('Coupon discount applies to product subtotal only - not delivery charge.', 'கூப்பன் தள்ளுபடி பொருட்களின் subtotal-க்கு மட்டும் பொருந்தும்.')}
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
-              <form onSubmit={saveCoupon} className="rounded-[28px] border border-[#EAD7B7] bg-[#FFFCF6] p-6 shadow-[0_18px_40px_rgba(139,35,50,0.08)] space-y-5">
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-[380px_minmax(0,1fr)]">
+              <form onSubmit={saveCoupon} className="rounded-2xl border border-[#EAD7B7] bg-[#FFFCF6] p-4 shadow-sm space-y-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#8B2332]">{editingCouponId !== null ? 'Edit mode' : 'New coupon'}</p>
-                    <h3 className="mt-2 text-[22px] font-black text-[#2C392A]">
+                    <p className="text-[10px] font-black uppercase tracking-[0.15em] text-[#8B2332]">{editingCouponId !== null ? 'Edit mode' : 'New coupon'}</p>
+                    <h3 className="mt-1 text-[17px] font-black text-[#2C392A]">
                       {editingCouponId !== null ? l('Edit Coupon', 'கூப்பனை திருத்து') : l('Create Coupon', 'புதிய கூப்பன்')}
                     </h3>
                   </div>
@@ -3053,7 +3074,7 @@ export default function Dashboard() {
                     <button
                       type="button"
                       onClick={cancelEditCoupon}
-                      className="rounded-full border border-[#E7CFAA] bg-[#FFF6E7] px-3 py-1.5 text-[12px] font-black text-[#8B2332] transition-colors hover:bg-[#FBEBD3]"
+                      className="rounded-full border border-[#E7CFAA] bg-[#FFF6E7] px-2.5 py-1 text-[11px] font-black text-[#8B2332] transition-colors hover:bg-[#FBEBD3]"
                     >
                       Cancel
                     </button>
@@ -3061,21 +3082,21 @@ export default function Dashboard() {
                 </div>
 
                 {couponSaveError && (
-                  <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] font-bold text-red-700">
+                  <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[12px] font-bold text-red-700">
                     {couponSaveError}
                   </div>
                 )}
                 {couponSaveSuccess && (
-                  <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-[13px] font-bold text-green-700">
+                  <div className="rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-[12px] font-bold text-green-700">
                     {couponSaveSuccess}
                   </div>
                 )}
 
-                <div className="space-y-2">
-                  <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-[#6B7280]">{l('Coupon Code', 'கூப்பன் குறியீடு')} *</label>
-                  <div className="flex gap-3">
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] font-black uppercase tracking-[0.15em] text-[#6B7280]">{l('Coupon Code', 'கூப்பன் குறியீடு')} *</label>
+                  <div className="flex gap-2">
                     <input
-                      className="flex-1 rounded-2xl border border-[#E7D9BF] bg-white px-4 py-3 text-[14px] font-black uppercase tracking-[0.16em] text-[#2C392A] outline-none transition-colors focus:border-[#8B2332]"
+                      className="flex-1 rounded-xl border border-[#E7D9BF] bg-white px-3 py-2.5 text-[12px] font-black uppercase tracking-[0.12em] text-[#2C392A] outline-none transition-colors focus:border-[#8B2332]"
                       placeholder="WELCOME10"
                       value={couponForm.code}
                       disabled={editingCouponId !== null}
@@ -3085,36 +3106,36 @@ export default function Dashboard() {
                       <button
                         type="button"
                         onClick={generateCouponCode}
-                        className="shrink-0 rounded-2xl border border-[#8B2332] bg-[#8B2332] px-4 py-3 text-[13px] font-black text-white transition-colors hover:bg-[#741D2A]"
+                        className="shrink-0 rounded-xl border border-[#8B2332] bg-[#8B2332] px-3 py-2.5 text-[11px] font-black text-white transition-colors hover:bg-[#741D2A]"
                       >
                         Generate
                       </button>
                     )}
                   </div>
                   {editingCouponId !== null && (
-                    <p className="text-[11px] font-medium text-[#6B7280]">{l('Code cannot be changed when editing', 'திருத்தும்போது குறியீட்டை மாற்ற முடியாது')}</p>
+                    <p className="text-[10px] font-medium text-[#6B7280]">{l('Code cannot be changed when editing', 'திருத்தும்போது குறியீட்டை மாற்ற முடியாது')}</p>
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-[#6B7280]">{l('Discount %', 'தள்ளுபடி %')} *</label>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-black uppercase tracking-[0.15em] text-[#6B7280]">{l('Discount %', 'தள்ளுபடி %')} *</label>
                     <input
                       type="number"
                       min="1"
                       max="100"
-                      className="w-full rounded-2xl border border-[#E7D9BF] bg-white px-4 py-3 text-[13px] font-bold text-[#2C392A] outline-none transition-colors focus:border-[#8B2332]"
+                      className="w-full rounded-xl border border-[#E7D9BF] bg-white px-3 py-2.5 text-[12px] font-bold text-[#2C392A] outline-none transition-colors focus:border-[#8B2332]"
                       placeholder="10"
                       value={couponForm.percentage}
                       onChange={e => setCouponForm(f => ({ ...f, percentage: Number(e.target.value) }))}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-[#6B7280]">{l('Min Order (₹)', 'குறைந்த ஆர்டர் (₹)')}</label>
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-black uppercase tracking-[0.15em] text-[#6B7280]">{l('Min Order (₹)', 'குறைந்த ஆர்டர் (₹)')}</label>
                     <input
                       type="number"
                       min="0"
-                      className="w-full rounded-2xl border border-[#E7D9BF] bg-white px-4 py-3 text-[13px] font-bold text-[#2C392A] outline-none transition-colors focus:border-[#8B2332]"
+                      className="w-full rounded-xl border border-[#E7D9BF] bg-white px-3 py-2.5 text-[12px] font-bold text-[#2C392A] outline-none transition-colors focus:border-[#8B2332]"
                       placeholder="0 = no minimum"
                       value={couponForm.min_order_value}
                       onChange={e => setCouponForm(f => ({ ...f, min_order_value: e.target.value }))}
@@ -3122,22 +3143,22 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-[#6B7280]">{l('Expiry Date', 'காலாவதி தேதி')}</label>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-black uppercase tracking-[0.15em] text-[#6B7280]">{l('Expiry Date', 'காலாவதி தேதி')}</label>
                     <input
                       type="date"
-                      className="w-full rounded-2xl border border-[#E7D9BF] bg-white px-4 py-3 text-[13px] font-bold text-[#2C392A] outline-none transition-colors focus:border-[#8B2332]"
+                      className="w-full rounded-xl border border-[#E7D9BF] bg-white px-3 py-2.5 text-[12px] font-bold text-[#2C392A] outline-none transition-colors focus:border-[#8B2332]"
                       value={couponForm.expiry_date}
                       onChange={e => setCouponForm(f => ({ ...f, expiry_date: e.target.value }))}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-[#6B7280]">{l('Usage Limit', 'பயன்பாட்டு வரம்பு')}</label>
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-black uppercase tracking-[0.15em] text-[#6B7280]">{l('Usage Limit', 'பயன்பாட்டு வரம்பு')}</label>
                     <input
                       type="number"
                       min="1"
-                      className="w-full rounded-2xl border border-[#E7D9BF] bg-white px-4 py-3 text-[13px] font-bold text-[#2C392A] outline-none transition-colors focus:border-[#8B2332]"
+                      className="w-full rounded-xl border border-[#E7D9BF] bg-white px-3 py-2.5 text-[12px] font-bold text-[#2C392A] outline-none transition-colors focus:border-[#8B2332]"
                       placeholder="Unlimited"
                       value={couponForm.usage_limit}
                       onChange={e => setCouponForm(f => ({ ...f, usage_limit: e.target.value }))}
@@ -3147,26 +3168,26 @@ export default function Dashboard() {
 
                 <button
                   type="submit"
-                  className="w-full rounded-2xl bg-[#8B2332] py-3.5 text-[14px] font-black text-white shadow-sm transition-colors hover:bg-[#741D2A]"
+                  className="w-full rounded-xl bg-[#8B2332] py-3 text-[13px] font-black text-white shadow-sm transition-colors hover:bg-[#741D2A]"
                 >
                   {editingCouponId !== null ? l('Update Coupon', 'கூப்பனை புதுப்பி') : l('Create Coupon', 'கூப்பனை உருவாக்கு')}
                 </button>
               </form>
 
-              <div className="rounded-[28px] border border-[#EAD7B7] bg-[#FFFCF6] p-6 shadow-[0_18px_40px_rgba(139,35,50,0.08)]">
-                <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+              <div className="rounded-2xl border border-[#EAD7B7] bg-[#FFFCF6] p-4 shadow-sm">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#6B7280]">{l('Coupon List', 'கூப்பன் பட்டியல்')}</p>
-                    <h3 className="mt-2 text-[22px] font-black text-[#111111]">
+                    <p className="text-[10px] font-black uppercase tracking-[0.15em] text-[#6B7280]">{l('Coupon List', 'கூப்பன் பட்டியல்')}</p>
+                    <h3 className="mt-1 text-[17px] font-black text-[#111111]">
                       {l('All Coupons', 'அனைத்து கூப்பன்கள்')} <span className="text-[#6B7280]">({coupons.length})</span>
                     </h3>
                   </div>
-                  <span className="rounded-full border border-[#E7CFAA] bg-[#FFF6E7] px-3 py-1 text-[11px] font-black uppercase tracking-[0.2em] text-[#8B2332]">
+                  <span className="rounded-full border border-[#E7CFAA] bg-[#FFF6E7] px-2.5 py-0.5 text-[10px] font-black uppercase tracking-[0.15em] text-[#8B2332]">
                     {l('Admin only', 'அட்மின் மட்டும்')}
                   </span>
                 </div>
 
-                <div className="space-y-3 max-h-[36rem] overflow-y-auto pr-1">
+                <div className="space-y-2 max-h-[30rem] overflow-y-auto pr-1">
                   {coupons.map((coupon) => {
                     const isExpired = coupon.expiry_date ? new Date(coupon.expiry_date) < new Date() : false
                     const isExhausted = coupon.usage_limit !== null && coupon.usage_count >= coupon.usage_limit
@@ -3174,46 +3195,46 @@ export default function Dashboard() {
                     return (
                       <div
                         key={coupon.id}
-                        className={`rounded-[22px] border p-4 shadow-sm transition-all ${
+                        className={`rounded-xl border p-3 shadow-sm transition-all ${
                           isEditing
                             ? 'border-[#8B2332] bg-[#FFF8F3] ring-1 ring-[#8B2332]/15'
                             : 'border-[#F0E2C8] bg-white hover:border-[#D8BA8A]'
                         }`}
                       >
-                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                          <div className="min-w-0 space-y-2">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <p className="truncate text-[18px] font-black uppercase tracking-[0.18em] text-[#2C392A]">{coupon.code}</p>
-                              <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] ${coupon.is_active ? 'bg-[#FCE7EA] text-[#8B2332]' : 'bg-[#F8EDD9] text-[#9A6700]'}`}>
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                          <div className="min-w-0 space-y-1.5">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <p className="truncate text-[15px] font-black uppercase tracking-[0.14em] text-[#2C392A]">{coupon.code}</p>
+                              <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.14em] ${coupon.is_active ? 'bg-[#FCE7EA] text-[#8B2332]' : 'bg-[#F8EDD9] text-[#9A6700]'}`}>
                                 {coupon.is_active ? l('Active', 'செயலில்') : l('Inactive', 'செயலற்ற')}
                               </span>
                               {isExpired && (
-                                <span className="rounded-full bg-red-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-red-700">
+                                <span className="rounded-full bg-red-100 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.14em] text-red-700">
                                   Expired
                                 </span>
                               )}
                               {!isExpired && isExhausted && (
-                                <span className="rounded-full bg-orange-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-orange-700">
+                                <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.14em] text-orange-700">
                                   Limit reached
                                 </span>
                               )}
                             </div>
 
-                            <p className="text-[13px] font-semibold text-[#8B2332]">
+                            <p className="text-[12px] font-semibold text-[#8B2332]">
                               {coupon.percentage}% off
                               {coupon.min_order_value > 0 && ` • min ₹${coupon.min_order_value}`}
                             </p>
 
-                            <p className="text-[12px] text-[#6C665C]">
+                            <p className="text-[11px] text-[#6C665C]">
                               Used {coupon.usage_count}{coupon.usage_limit ? `/${coupon.usage_limit}` : ''} times
                               {coupon.expiry_date ? ` • expires ${new Date(coupon.expiry_date).toLocaleDateString('en-IN')}` : ''}
                             </p>
                           </div>
 
-                          <div className="flex shrink-0 items-center gap-2">
+                          <div className="flex shrink-0 items-center gap-1.5">
                             <button
                               onClick={() => void toggleCoupon(coupon)}
-                              className={`rounded-full px-3 py-2 text-[11px] font-black uppercase tracking-[0.18em] transition-colors ${
+                              className={`rounded-full px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] transition-colors ${
                                 coupon.is_active ? 'bg-[#FCE7EA] text-[#8B2332] hover:bg-[#F8D7DD]' : 'bg-[#F8EDD9] text-[#9A6700] hover:bg-[#F2E0B9]'
                               }`}
                             >
@@ -3221,15 +3242,15 @@ export default function Dashboard() {
                             </button>
                             <button
                               onClick={() => startEditCoupon(coupon)}
-                              className="rounded-full border border-[#E7D9BF] bg-white p-2.5 text-[#8B2332] transition-colors hover:border-[#D8BA8A] hover:text-[#741D2A]"
+                              className="rounded-full border border-[#E7D9BF] bg-white p-2 text-[#8B2332] transition-colors hover:border-[#D8BA8A] hover:text-[#741D2A]"
                             >
-                              <Edit2 size={16} />
+                              <Edit2 size={14} />
                             </button>
                             <button
                               onClick={() => void deleteCoupon(coupon)}
-                              className="rounded-full border border-[#F4D4D4] bg-white p-2.5 text-red-500 transition-colors hover:bg-red-50 hover:text-red-700"
+                              className="rounded-full border border-[#F4D4D4] bg-white p-2 text-red-500 transition-colors hover:bg-red-50 hover:text-red-700"
                             >
-                              <Trash2 size={16} />
+                              <Trash2 size={14} />
                             </button>
                           </div>
                         </div>

@@ -1,7 +1,7 @@
 import './index.css'
 import { lazy, Suspense, useEffect } from 'react'
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
-import { useAuthStore, useProductStore, useVariantStore } from './store/store'
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { useAuthStore, useProductStore, useVariantStore, useAdminAuthStore } from './store/store'
 import { BRAND_EN } from './lib/brand'
 import { clearLocalOrders } from './lib/ordersFallback'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
@@ -10,6 +10,7 @@ const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Pos = lazy(() => import('./pages/Pos'))
 const DigitalInvoice = lazy(() => import('./pages/DigitalInvoice'))
 const Login = lazy(() => import('./pages/Login'))
+const AdminLogin = lazy(() => import('./pages/AdminLogin'))
 
 function LoadingSpinner() {
   return (
@@ -25,6 +26,15 @@ function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
 
   if (loading) return <LoadingSpinner />
   return user ? <Navigate to="/dashboard" replace /> : <>{children}</>
+}
+
+function AdminGuard({ children }: { children: React.ReactNode }) {
+  const isLoggedIn = useAdminAuthStore((state) => state.isLoggedIn)
+  const location = useLocation()
+  if (!isLoggedIn) {
+    return <Navigate to="/admin-login" state={{ from: location }} replace />
+  }
+  return <>{children}</>
 }
 
 function AppShell() {
@@ -91,37 +101,27 @@ function AppShell() {
             }
           />
           <Route
-            path="/admin"
+            path="/admin-login"
             element={
               <Suspense fallback={<LoadingSpinner />}>
-                <Dashboard />
+                <AdminLogin />
               </Suspense>
             }
           />
           <Route
-            path="/dashboard"
             element={
-              <Suspense fallback={<LoadingSpinner />}>
-                <Dashboard />
-              </Suspense>
+              <AdminGuard>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <Dashboard />
+                </Suspense>
+              </AdminGuard>
             }
-          />
-          <Route
-            path="/whatsapp-center"
-            element={
-              <Suspense fallback={<LoadingSpinner />}>
-                <Dashboard />
-              </Suspense>
-            }
-          />
-          <Route
-            path="/pos-analytics"
-            element={
-              <Suspense fallback={<LoadingSpinner />}>
-                <Dashboard />
-              </Suspense>
-            }
-          />
+          >
+            <Route path="/admin" element={<Dashboard />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/whatsapp-center" element={<Dashboard />} />
+            <Route path="/pos-analytics" element={<Dashboard />} />
+          </Route>
           <Route
             path="/pos"
             element={

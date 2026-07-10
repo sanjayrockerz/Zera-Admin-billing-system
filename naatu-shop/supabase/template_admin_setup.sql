@@ -185,4 +185,22 @@ BEGIN
   WHERE code = 'WELCOME10';
 END $$;
 
+-- Admin credentials table for admin dashboard login
+CREATE TABLE IF NOT EXISTS public.admin_credentials (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  shop_id TEXT UNIQUE NOT NULL,
+  password TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.admin_credentials ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "public read admin_credentials" ON public.admin_credentials;
+CREATE POLICY "public read admin_credentials" ON public.admin_credentials
+  FOR SELECT USING (true);
+
+INSERT INTO public.admin_credentials (shop_id, password)
+VALUES ('shopname', 'shopname@cenexa')
+ON CONFLICT (shop_id) DO UPDATE SET password = EXCLUDED.password;
+
 NOTIFY pgrst, 'reload schema';
