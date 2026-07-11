@@ -501,7 +501,9 @@ export default function Dashboard() {
       completedOrders: billableCompleted.length,
       posRevenue,
       onlinePosRevenue,
-      onlineOrderCount: onlinePOS.length,
+      // Keep the bill count separate from revenue so the TOTAL ONLINE BILLS
+      // card stays visible and always reflects the current completed orders.
+      onlineBillCount: onlinePOS.length,
       offlineOrderCount: offlinePOS.length,
       manualRevenue: manualRevenue || totalManualRevenue,
       monthlyRevenue,
@@ -1823,7 +1825,7 @@ export default function Dashboard() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
                   {[
                     { label: 'TOTAL OFFLINE BILLS', helper: 'Walk-in POS orders',    value: analytics.offlineOrderCount,                    icon: <LayoutDashboard size={16} />, color: 'text-red-500',    bg: 'bg-red-50' },
-                    { label: 'TOTAL ONLINE BILLS',  helper: 'Online channel orders', value: analytics.onlineOrderCount,                     icon: <Box size={16} />,             color: 'text-blue-500',   bg: 'bg-blue-50' },
+                    { label: 'TOTAL ONLINE BILLS',  helper: 'Live completed online bills', value: analytics.onlineBillCount,               icon: <Box size={16} />,             color: 'text-blue-500',   bg: 'bg-blue-50' },
                     { label: 'TOTAL ITEMS SOLD',    helper: 'From completed bills',  value: Math.round(analytics.totalProductsSold),         icon: <Box size={16} />,             color: 'text-purple-500', bg: 'bg-purple-50' },
                     { label: 'AVG ORDER VALUE',     helper: 'Per completed order',   value: formatCurrency(analytics.completedOrders > 0 ? analytics.totalCompletedRevenue / analytics.completedOrders : 0), icon: <IndianRupee size={16} />, color: 'text-emerald-500', bg: 'bg-emerald-50' },
                     { label: 'TOP PRODUCT',         helper: 'Most sold item',        value: analytics.bestProduct || '-',                    icon: <Trophy size={16} />,          color: 'text-pink-500',   bg: 'bg-pink-50' },
