@@ -477,4 +477,34 @@ CREATE POLICY "product_images_admin_delete" ON storage.objects
     bucket_id = 'product-images'
     AND coalesce((auth.jwt() -> 'app_metadata' ->> 'role'), '') = 'admin'
   );
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- 10. SUPABASE STORAGE — invoices bucket (public)
+-- ═══════════════════════════════════════════════════════════════════════
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+  VALUES ('invoices', 'invoices', true, 10485760,
+          ARRAY['application/pdf'])
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+DROP POLICY IF EXISTS "invoices_public_read" ON storage.objects;
+DROP POLICY IF EXISTS "invoices_admin_upload" ON storage.objects;
+DROP POLICY IF EXISTS "invoices_admin_delete" ON storage.objects;
+
+CREATE POLICY "invoices_public_read" ON storage.objects
+  FOR SELECT TO anon, authenticated
+  USING (bucket_id = 'invoices');
+
+CREATE POLICY "invoices_admin_upload" ON storage.objects
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    bucket_id = 'invoices'
+    AND coalesce((auth.jwt() -> 'app_metadata' ->> 'role'), '') = 'admin'
+  );
+
+CREATE POLICY "invoices_admin_delete" ON storage.objects
+  FOR DELETE TO authenticated
+  USING (
+    bucket_id = 'invoices'
+    AND coalesce((auth.jwt() -> 'app_metadata' ->> 'role'), '') = 'admin'
+  );
 NOTIFY pgrst, 'reload schema';

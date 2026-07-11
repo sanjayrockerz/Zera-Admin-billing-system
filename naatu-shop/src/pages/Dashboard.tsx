@@ -3,14 +3,14 @@ import {
   BarChart2, Trash2, Edit2, List, ShoppingCart, LayoutDashboard,
   Box, AlertCircle, ArrowUp, ArrowDown, Power, Download, TrendingUp,
   Package, IndianRupee, Search, RefreshCw, ShieldCheck, ShieldOff, Trophy,
-  MessageCircle, ChevronDown, Eye, FileText, X,
+  MessageCircle, ChevronDown, Eye, FileText,
 } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { debounce } from '../lib/debounce'
 import { useAuthStore, useProductStore, useAdminAuthStore, type Product } from '../store/store'
 import { useLangStore } from '../store/langStore'
-import { uploadProductImage } from '../lib/storage'
+import { uploadProductImage, uploadInvoicePdf } from '../lib/storage'
 import { formatCurrency, normalizeOrderMode, normalizeUnitType, toNumber, type UnitType } from '../lib/retail'
 import { normalizeStructuredOrderItem } from '../lib/retail'
 import { buildProfessionalWhatsAppMessage } from '../lib/whatsappMessage'
@@ -148,7 +148,6 @@ export default function Dashboard() {
 
   // WA detail expansion
   const [waExpandedId, setWaExpandedId] = useState<string | null>(null)
-  const [selectedOrder, setSelectedOrder] = useState<DashboardOrder | null>(null)
 
   // Search & date filter
   const [search, setSearch] = useState({ invoiceNo: '', phone: '', customerName: '', dateFrom: '', dateTo: '' })
@@ -696,9 +695,20 @@ export default function Dashboard() {
       couponCode: order.coupon_code || undefined,
     })
 
+    let downloadLink = ''
+    try {
+      downloadLink = await uploadInvoicePdf(file, order.invoice_no || order.id)
+    } catch (err) {
+      console.warn('Failed to upload invoice PDF, falling back to local download:', err)
+    }
+
+    const whatsappMessage = downloadLink
+      ? `${message}\n\n📄 Download Invoice: ${downloadLink}`
+      : `${message}\n\nThe PDF was downloaded. Please attach it in this chat before sending.`
+
     if (navigator.share && navigator.canShare?.({ files: [file] })) {
       try {
-        await navigator.share({ files: [file], title: `Invoice ${order.invoice_no}`, text: message })
+        await navigator.share({ files: [file], title: `Invoice ${order.invoice_no}`, text: whatsappMessage })
         return
       } catch { /* fall through when sharing is cancelled or unsupported */ }
     }
@@ -709,7 +719,7 @@ export default function Dashboard() {
     link.download = file.name
     link.click()
     setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000)
-    window.open(`${toWhatsAppUrl(order.phone)}?text=${encodeURIComponent(`${message}\n\nThe PDF was downloaded. Please attach it in this chat before sending.`)}`, '_blank', 'noopener,noreferrer')
+    window.open(`${toWhatsAppUrl(order.phone)}?text=${encodeURIComponent(whatsappMessage)}`, '_blank', 'noopener,noreferrer')
   }
 
   const generateCouponCode = () => {
@@ -2547,8 +2557,8 @@ export default function Dashboard() {
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <button onClick={() => setSelectedOrder(selectedOrder?.id === o.id ? null : o)} className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl border border-[#EAD7B7]/60 px-3 text-[12px] font-black text-[#2C392A] transition-colors hover:bg-white" title="View Details">
-                          <Eye size={14} /> {selectedOrder?.id === o.id ? 'Close' : 'View Details'}
+                        <button onClick={() => navigate(`/invoice/${encodeURIComponent(o.invoice_no)}`)} className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl border border-[#EAD7B7]/60 px-3 text-[12px] font-black text-[#2C392A] transition-colors hover:bg-white" title="View Invoice">
+                          <Eye size={14} /> View Invoice
                         </button>
                         <button onClick={() => void sendOrderWhatsApp(o)} className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl bg-green-500 px-3 text-[12px] font-black text-white transition-colors hover:bg-green-600" title="Download PDF and open WhatsApp">
                           <MessageCircle size={14} /> WhatsApp PDF
@@ -2582,7 +2592,6 @@ export default function Dashboard() {
                     {filteredSearchResults.slice(0, 50).map(o => {
                       const billTypeLabel = normalizeOrderType(o.order_type) === 'manual_sale' ? 'MANUAL' : normalizeOrderMode(o.order_mode) === 'online' ? 'ONLINE' : 'OFFLINE'
                       const billTypeClass = normalizeOrderType(o.order_type) === 'manual_sale' ? 'bg-purple-50 text-purple-700' : normalizeOrderMode(o.order_mode) === 'online' ? 'bg-blue-50 text-blue-700' : 'bg-orange-50 text-orange-700'
-                      const waPreview = selectedOrder?.id === o.id ? getOrderWhatsAppPreview(o) : null
                       return (
                         <React.Fragment key={o.id}>
                         <tr key={o.id} className="hover:bg-[#F7F6F2]">
@@ -2615,7 +2624,7 @@ export default function Dashboard() {
                           </td>
                           <td className="px-3 py-3">
                             <div className="flex items-center gap-1">
-                              <button onClick={() => setSelectedOrder(selectedOrder?.id === o.id ? null : o)} className="rounded-lg p-1.5 text-[#2C392A] transition-colors hover:bg-[#F7F6F2]" title="View Details">
+                              <button onClick={() => navigate(`/invoice/${encodeURIComponent(o.invoice_no)}`)} className="rounded-lg p-1.5 text-[#2C392A] transition-colors hover:bg-[#F7F6F2]" title="View Invoice">
                                 <Eye size={14} />
                               </button>
                               <button onClick={() => void sendOrderWhatsApp(o)} className="rounded-lg p-1.5 text-green-600 transition-colors hover:bg-green-50" title="Download PDF and open WhatsApp">
@@ -2624,26 +2633,6 @@ export default function Dashboard() {
                             </div>
                           </td>
                         </tr>
-                        {waPreview && (
-                          <tr key={`${o.id}-details`}>
-                            <td colSpan={11} className="border-b border-[#EAD7B7]/50 bg-[#FBFAF6] p-4">
-                              <div className="overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm">
-                                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-blue-100 bg-blue-50/60 px-4 py-3">
-                                  <div className="flex items-center gap-2"><FileText size={18} className="text-blue-600" /><div><p className="font-black text-[#2C392A]">Invoice {o.invoice_no || o.id}</p><p className="text-[11px] text-[#6B7280]">Generated {new Date(o.created_at).toLocaleString('en-IN')}</p></div></div>
-                                  <span className="rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-700">WhatsApp Package Ready</span>
-                                </div>
-                                <div className="grid gap-4 p-4 lg:grid-cols-2">
-                                  <div className="space-y-3">
-                                    <div className="rounded-xl border border-[#EAD7B7]/60 bg-[#FBFAF6] p-3"><p className="text-[10px] font-black uppercase tracking-wider text-[#7A786F]">PDF Attachment</p><p className="mt-1 text-sm font-black text-[#2C392A]">{waPreview.fileName}</p><p className="mt-1 text-[11px] text-[#6B7280]">Branded invoice with customer, items, totals, and payment summary.</p></div>
-                                    <div className="rounded-xl border border-[#EAD7B7]/60 p-3"><p className="text-[10px] font-black uppercase tracking-wider text-[#7A786F]">WhatsApp Recipient</p><p className="mt-1 text-sm font-black text-[#2C392A]">{o.customer_name || 'Walk-in Customer'}</p><p className="text-[11px] text-[#6B7280]">{o.phone || 'Store WhatsApp fallback'}</p></div>
-                                    <div className="rounded-xl border border-[#EAD7B7]/60 p-3"><p className="text-[10px] font-black uppercase tracking-wider text-[#7A786F]">Invoice Contents</p>{waPreview.items.map((item, index) => <div key={`${item.name}-${index}`} className="flex justify-between border-b border-[#EAD7B7]/30 py-2 text-[12px] last:border-0"><span className="font-semibold text-[#2C392A]">{item.name} × {item.quantity}</span><span className="font-black">{formatCurrency(item.line_total)}</span></div>)}<div className="flex justify-between pt-2 text-sm font-black"><span>Total</span><span>{formatCurrency(o.total)}</span></div></div>
-                                  </div>
-                                  <div><div className="mb-2 flex items-center justify-between"><p className="text-[10px] font-black uppercase tracking-wider text-[#7A786F]">Message Prepared for WhatsApp</p><span className="text-[11px] font-black text-emerald-700">Text + PDF</span></div><pre className="max-h-72 overflow-auto rounded-xl bg-[#191919] p-4 text-[11px] leading-relaxed text-white whitespace-pre-wrap">{waPreview.message}</pre><div className="mt-3 flex justify-end gap-2"><button onClick={() => setSelectedOrder(null)} className="rounded-xl bg-[#191919] px-4 py-2 text-[12px] font-black text-white">Close</button><button onClick={() => void sendOrderWhatsApp(o)} className="rounded-xl bg-green-500 px-4 py-2 text-[12px] font-black text-white hover:bg-green-600"><MessageCircle size={13} className="mr-1 inline" /> Send WhatsApp PDF</button></div></div>
-                                </div>
-                              </div>
-                            </td>
-                          </tr>
-                        )}
                         </React.Fragment>
                       )
                     })}
@@ -3491,45 +3480,6 @@ export default function Dashboard() {
             <p className="text-[12px] text-[#6B7280] font-bold">
               - {l('Role changes take effect upon next login.', 'à®ªà®™à¯à®•à¯ à®®à®¾à®±à¯à®±à®®à¯ à®…à®Ÿà¯à®¤à¯à®¤ à®®à¯à®±à¯ˆ à®‰à®³à¯à®¨à¯à®´à¯ˆà®¨à¯à®¤à®¾à®²à¯ à®¨à®Ÿà¯ˆà®®à¯à®±à¯ˆà®•à¯à®•à¯ à®µà®°à¯à®®à¯.')}
             </p>
-          </div>
-        )}
-
-        {selectedOrder && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="Order details">
-            <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
-              <div className="sticky top-0 flex items-center justify-between border-b border-[#EAD7B7]/60 bg-white px-5 py-4">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-[#7DAA8F]">Order Details</p>
-                  <h2 className="text-lg font-black text-[#2C392A]">{selectedOrder.invoice_no || selectedOrder.id}</h2>
-                </div>
-                <button onClick={() => setSelectedOrder(null)} className="rounded-xl p-2 text-[#5F6D59] hover:bg-[#F7F6F2]" aria-label="Close order details"><X size={20} /></button>
-              </div>
-              <div className="space-y-5 p-5">
-                <div className="grid grid-cols-2 gap-4 rounded-2xl bg-[#FBFAF6] p-4 text-sm sm:grid-cols-3">
-                  <div><p className="text-[10px] font-black uppercase text-[#9BAB9A]">Customer</p><p className="font-bold text-[#2C392A]">{selectedOrder.customer_name || 'Walk-in Customer'}</p></div>
-                  <div><p className="text-[10px] font-black uppercase text-[#9BAB9A]">Phone</p><p className="font-bold text-[#2C392A]">{selectedOrder.phone || '—'}</p></div>
-                  <div><p className="text-[10px] font-black uppercase text-[#9BAB9A]">Date</p><p className="font-bold text-[#2C392A]">{new Date(selectedOrder.created_at).toLocaleString('en-IN')}</p></div>
-                  <div className="col-span-2 sm:col-span-3"><p className="text-[10px] font-black uppercase text-[#9BAB9A]">Address</p><p className="font-semibold text-[#2C392A]">{selectedOrder.address || '—'}</p></div>
-                </div>
-                <div>
-                  <h3 className="mb-2 text-[11px] font-black uppercase tracking-wider text-[#5F6D59]">Items</h3>
-                  <div className="divide-y divide-[#EAD7B7]/40 rounded-2xl border border-[#EAD7B7]/60">
-                    {parseOrderItems(selectedOrder.items).map((raw, index) => {
-                      const item = normalizeStructuredOrderItem(raw)
-                      return <div key={`${item.name}-${index}`} className="flex items-center justify-between gap-3 px-4 py-3 text-sm"><span className="font-bold text-[#2C392A]">{item.name} <span className="font-semibold text-[#5F6D59]">× {item.quantity} {item.unit}</span></span><span className="font-black text-[#2C392A]">{formatCurrency(item.line_total)}</span></div>
-                    })}
-                    {parseOrderItems(selectedOrder.items).length === 0 && <p className="px-4 py-4 text-sm text-[#5F6D59]">Item details are unavailable for this order.</p>}
-                  </div>
-                </div>
-                <div className="flex items-center justify-between border-t border-[#EAD7B7]/60 pt-4">
-                  <span className="text-sm font-black uppercase text-[#5F6D59]">Total</span>
-                  <span className="text-xl font-black text-[#8B2332]">{formatCurrency(selectedOrder.total)}</span>
-                </div>
-                <div className="flex flex-wrap justify-end gap-2">
-                  <button onClick={() => { void sendOrderWhatsApp(selectedOrder); setSelectedOrder(null); }} className="inline-flex items-center gap-2 rounded-xl bg-green-500 px-4 py-2.5 text-sm font-black text-white hover:bg-green-600"><MessageCircle size={15} /> WhatsApp PDF</button>
-                </div>
-              </div>
-            </div>
           </div>
         )}
       </main>
