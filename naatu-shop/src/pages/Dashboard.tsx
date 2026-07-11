@@ -3,7 +3,7 @@ import {
   BarChart2, Trash2, Edit2, List, ShoppingCart, LayoutDashboard,
   Box, AlertCircle, ArrowUp, ArrowDown, Power, Download, TrendingUp,
   Package, IndianRupee, Search, RefreshCw, ShieldCheck, ShieldOff, Trophy,
-  MessageCircle, ChevronDown,
+  MessageCircle, ChevronDown, Eye, FileText, X,
 } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
@@ -12,6 +12,10 @@ import { useAuthStore, useProductStore, useAdminAuthStore, type Product } from '
 import { useLangStore } from '../store/langStore'
 import { uploadProductImage } from '../lib/storage'
 import { formatCurrency, normalizeOrderMode, normalizeUnitType, toNumber, type UnitType } from '../lib/retail'
+import { normalizeStructuredOrderItem } from '../lib/retail'
+import { buildProfessionalWhatsAppMessage } from '../lib/whatsappMessage'
+import { invoicePdfFile } from '../lib/invoicePdf'
+import { toWhatsAppUrl } from '../lib/phone'
 import { createVariant, updateVariant, deleteVariant, setDefaultVariant, type ProductVariant } from '../services/variantService'
 import { useVariantStore } from '../store/store'
 import Pos from './Pos'
@@ -144,6 +148,7 @@ export default function Dashboard() {
 
   // WA detail expansion
   const [waExpandedId, setWaExpandedId] = useState<string | null>(null)
+  const [selectedOrder, setSelectedOrder] = useState<DashboardOrder | null>(null)
 
   // Search & date filter
   const [search, setSearch] = useState({ invoiceNo: '', phone: '', customerName: '', dateFrom: '', dateTo: '' })
@@ -630,6 +635,66 @@ export default function Dashboard() {
     }
     setOrders(prev => prev.filter(o => o.id !== orderId))
     setSearchResults(prev => prev.filter(o => o.id !== orderId))
+  }
+
+  const sendOrderWhatsApp = async (order: DashboardOrder) => {
+    const rawItems = parseOrderItems(order.items)
+    const fallbackItems = orderItems
+      .filter(item => item.order_id === order.id)
+      .map(item => ({ name: item.product_name, quantity: item.quantity, line_total: item.line_total }))
+    const items = (rawItems.length ? rawItems : fallbackItems).map(normalizeStructuredOrderItem)
+    if (!items.length) {
+      alert('This order has no item details to send.')
+      return
+    }
+
+    const subtotal = items.reduce((sum, item) => sum + toNumber(item.line_total, 0), 0)
+    const message = buildProfessionalWhatsAppMessage({
+      customerName: order.customer_name,
+      phone: order.phone,
+      invoiceNumber: order.invoice_no || order.id,
+      invoiceDate: order.created_at,
+      items: items.map(item => ({
+        name: item.name,
+        qty: item.quantity,
+        unit: item.unit,
+        unitType: item.unit_type,
+        rate: item.base_price,
+        lineTotal: item.line_total,
+      })),
+      subtotal,
+      couponDiscount: order.discount_amount,
+      shipping: order.delivery_charge,
+      total: order.total,
+    })
+    const file = invoicePdfFile({
+      invoiceNo: order.invoice_no || order.id,
+      date: order.created_at,
+      customerName: order.customer_name,
+      phone: order.phone,
+      address: order.address,
+      items: items as unknown as Array<Record<string, unknown>>,
+      subtotal,
+      shipping: order.delivery_charge,
+      total: order.total,
+      discountAmount: order.discount_amount,
+      couponCode: order.coupon_code || undefined,
+    })
+
+    if (navigator.share && navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: `Invoice ${order.invoice_no}`, text: message })
+        return
+      } catch { /* fall through when sharing is cancelled or unsupported */ }
+    }
+
+    const downloadUrl = URL.createObjectURL(file)
+    const link = document.createElement('a')
+    link.href = downloadUrl
+    link.download = file.name
+    link.click()
+    setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000)
+    window.open(`${toWhatsAppUrl(order.phone)}?text=${encodeURIComponent(`${message}\n\nThe PDF was downloaded. Please attach it in this chat before sending.`)}`, '_blank', 'noopener,noreferrer')
   }
 
   const generateCouponCode = () => {
@@ -2460,7 +2525,13 @@ export default function Dashboard() {
                           <p className="font-semibold text-[#2C392A]">{o.delivery_charge > 0 ? formatCurrency(o.delivery_charge) : '—'}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button onClick={() => setSelectedOrder(o)} className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl border border-[#EAD7B7]/60 px-3 text-[12px] font-black text-[#2C392A] transition-colors hover:bg-white" title="View Details">
+                          <Eye size={14} /> View Details
+                        </button>
+                        <button onClick={() => void sendOrderWhatsApp(o)} className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl bg-green-500 px-3 text-[12px] font-black text-white transition-colors hover:bg-green-600" title="Download PDF and open WhatsApp">
+                          <MessageCircle size={14} /> WhatsApp PDF
+                        </button>
                         <select value={normalizeStatus(o.status)} onChange={e => void updateOrderStatus(o.id, e.target.value)}
                           className={`min-h-[44px] flex-1 cursor-pointer rounded-xl border px-3 py-2 text-[12px] font-black outline-none ${normalizeStatus(o.status) === 'completed' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700'}`}>
                           <option value="pending">{l('Pending', 'à®¨à®¿à®²à¯à®µà¯ˆ')}</option>
@@ -2481,7 +2552,7 @@ export default function Dashboard() {
                 <table className="w-full min-w-[800px] text-left text-[13px]">
                   <thead className="bg-[#F7F6F2] text-[10px] uppercase tracking-wider text-[#5F6D59]">
                     <tr>
-                      {['Invoice No', 'Customer Name', 'Phone', 'Bill Type', 'Coupon', 'Discount', 'Delivery', 'Total', 'Date', 'Status'].map(h => (
+                      {['Invoice No', 'Customer Name', 'Phone', 'Bill Type', 'Coupon', 'Discount', 'Delivery', 'Total', 'Date', 'Status', 'Actions'].map(h => (
                         <th key={h} className="px-3 py-3 font-black">{h}</th>
                       ))}
                     </tr>
@@ -2519,11 +2590,21 @@ export default function Dashboard() {
                               </button>
                             </div>
                           </td>
+                          <td className="px-3 py-3">
+                            <div className="flex items-center gap-1">
+                              <button onClick={() => setSelectedOrder(o)} className="rounded-lg p-1.5 text-[#2C392A] transition-colors hover:bg-[#F7F6F2]" title="View Details">
+                                <Eye size={14} />
+                              </button>
+                              <button onClick={() => void sendOrderWhatsApp(o)} className="rounded-lg p-1.5 text-green-600 transition-colors hover:bg-green-50" title="Download PDF and open WhatsApp">
+                                <MessageCircle size={14} />
+                              </button>
+                            </div>
+                          </td>
                         </tr>
                       )
                     })}
                     {filteredSearchResults.length === 0 && (
-                      <tr><td colSpan={10} className="px-4 py-8 text-center text-[#5F6D59]">{l('No matching bills', 'பில்கள் இல்லை')}</td></tr>
+                      <tr><td colSpan={11} className="px-4 py-8 text-center text-[#5F6D59]">{l('No matching bills', 'பில்கள் இல்லை')}</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -3366,6 +3447,46 @@ export default function Dashboard() {
             <p className="text-[12px] text-[#6B7280] font-bold">
               - {l('Role changes take effect upon next login.', 'à®ªà®™à¯à®•à¯ à®®à®¾à®±à¯à®±à®®à¯ à®…à®Ÿà¯à®¤à¯à®¤ à®®à¯à®±à¯ˆ à®‰à®³à¯à®¨à¯à®´à¯ˆà®¨à¯à®¤à®¾à®²à¯ à®¨à®Ÿà¯ˆà®®à¯à®±à¯ˆà®•à¯à®•à¯ à®µà®°à¯à®®à¯.')}
             </p>
+          </div>
+        )}
+
+        {selectedOrder && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="Order details">
+            <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
+              <div className="sticky top-0 flex items-center justify-between border-b border-[#EAD7B7]/60 bg-white px-5 py-4">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-[#7DAA8F]">Order Details</p>
+                  <h2 className="text-lg font-black text-[#2C392A]">{selectedOrder.invoice_no || selectedOrder.id}</h2>
+                </div>
+                <button onClick={() => setSelectedOrder(null)} className="rounded-xl p-2 text-[#5F6D59] hover:bg-[#F7F6F2]" aria-label="Close order details"><X size={20} /></button>
+              </div>
+              <div className="space-y-5 p-5">
+                <div className="grid grid-cols-2 gap-4 rounded-2xl bg-[#FBFAF6] p-4 text-sm sm:grid-cols-3">
+                  <div><p className="text-[10px] font-black uppercase text-[#9BAB9A]">Customer</p><p className="font-bold text-[#2C392A]">{selectedOrder.customer_name || 'Walk-in Customer'}</p></div>
+                  <div><p className="text-[10px] font-black uppercase text-[#9BAB9A]">Phone</p><p className="font-bold text-[#2C392A]">{selectedOrder.phone || '—'}</p></div>
+                  <div><p className="text-[10px] font-black uppercase text-[#9BAB9A]">Date</p><p className="font-bold text-[#2C392A]">{new Date(selectedOrder.created_at).toLocaleString('en-IN')}</p></div>
+                  <div className="col-span-2 sm:col-span-3"><p className="text-[10px] font-black uppercase text-[#9BAB9A]">Address</p><p className="font-semibold text-[#2C392A]">{selectedOrder.address || '—'}</p></div>
+                </div>
+                <div>
+                  <h3 className="mb-2 text-[11px] font-black uppercase tracking-wider text-[#5F6D59]">Items</h3>
+                  <div className="divide-y divide-[#EAD7B7]/40 rounded-2xl border border-[#EAD7B7]/60">
+                    {parseOrderItems(selectedOrder.items).map((raw, index) => {
+                      const item = normalizeStructuredOrderItem(raw)
+                      return <div key={`${item.name}-${index}`} className="flex items-center justify-between gap-3 px-4 py-3 text-sm"><span className="font-bold text-[#2C392A]">{item.name} <span className="font-semibold text-[#5F6D59]">× {item.quantity} {item.unit}</span></span><span className="font-black text-[#2C392A]">{formatCurrency(item.line_total)}</span></div>
+                    })}
+                    {parseOrderItems(selectedOrder.items).length === 0 && <p className="px-4 py-4 text-sm text-[#5F6D59]">Item details are unavailable for this order.</p>}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between border-t border-[#EAD7B7]/60 pt-4">
+                  <span className="text-sm font-black uppercase text-[#5F6D59]">Total</span>
+                  <span className="text-xl font-black text-[#8B2332]">{formatCurrency(selectedOrder.total)}</span>
+                </div>
+                <div className="flex flex-wrap justify-end gap-2">
+                  {selectedOrder.invoice_no && <Link to={`/invoice/${encodeURIComponent(selectedOrder.invoice_no)}`} onClick={() => setSelectedOrder(null)} className="inline-flex items-center gap-2 rounded-xl border border-[#EAD7B7]/60 px-4 py-2.5 text-sm font-black text-[#2C392A] hover:bg-[#F7F6F2]"><FileText size={15} /> Open Invoice</Link>}
+                  <button onClick={() => void sendOrderWhatsApp(selectedOrder)} className="inline-flex items-center gap-2 rounded-xl bg-green-500 px-4 py-2.5 text-sm font-black text-white hover:bg-green-600"><MessageCircle size={15} /> WhatsApp PDF</button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </main>
