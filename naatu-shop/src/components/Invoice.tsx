@@ -111,8 +111,8 @@ export const Invoice: React.FC<InvoiceProps> = ({
       </div>
 
       {/* ── META ROW ──────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 28, gap: 24 }}>
-        <div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 28, gap: 24 }}>
+        <div style={{ flex: '1 1 220px', minWidth: 0 }}>
           <div style={{ fontSize: 9, fontWeight: 800, color: '#888', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Order Date</div>
           <div style={{ fontSize: 13, fontWeight: 700 }}>{dateStr}</div>
           {userId && (
@@ -122,7 +122,7 @@ export const Invoice: React.FC<InvoiceProps> = ({
             </>
           )}
         </div>
-        <div style={{ textAlign: 'right' }}>
+        <div style={{ flex: '1 1 220px', minWidth: 0, textAlign: 'right', overflowWrap: 'anywhere' }}>
           <div style={{ fontSize: 9, fontWeight: 800, color: '#888', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Customer</div>
           <div style={{ fontSize: 14, fontWeight: 800, color: '#1a1a2e' }}>{customerName}</div>
           <div style={{ fontSize: 12, color: '#555', marginTop: 3 }}>{phone}</div>

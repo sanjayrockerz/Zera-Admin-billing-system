@@ -141,6 +141,9 @@ function AppShell() {
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </main>
+      <footer className="pointer-events-none fixed bottom-0 left-0 right-0 z-40 border-t border-[#EAD7B7]/40 bg-white/90 px-3 py-1.5 text-center text-[10px] font-semibold tracking-wide text-[#8A877E] backdrop-blur-sm print:hidden">
+        © 2026 Powered by Cenexa Systems. All rights reserved.
+      </footer>
     </div>
   )
 }

@@ -872,8 +872,8 @@ export default function Pos(props: PosProps = {}) {
         </div>
 
         {/* RIGHT COLUMN (approx 32%) */}
-        <div className="flex-[1] flex flex-col gap-6 lg:sticky lg:top-4 lg:max-h-[calc(100vh-100px)]">
-          <div className="bg-[#FAF9F6] rounded-2xl border border-[#EAD7B7]/60 shadow-sm overflow-hidden flex flex-col h-full max-h-full">
+        <div className="flex-[1] flex min-h-0 flex-col gap-6 lg:sticky lg:top-4 lg:h-[calc(100vh-100px)] lg:max-h-[calc(100vh-100px)]">
+          <div className="flex min-h-0 h-full max-h-full flex-col overflow-hidden rounded-2xl border border-[#EAD7B7]/60 bg-[#FAF9F6] shadow-sm">
             
             {/* Header */}
             <div className="flex items-center justify-between p-4 md:p-5 border-b border-[#EAD7B7]/60 bg-white shrink-0">
@@ -888,7 +888,7 @@ export default function Pos(props: PosProps = {}) {
             </div>
 
             {/* Content body */}
-            <div className="p-4 flex flex-col gap-4 bg-white flex-1 overflow-y-auto">
+            <div className="min-h-0 flex-1 overflow-y-auto bg-white p-4 pb-8">
               
               {/* Info Table */}
               <div className="border border-[#EAD7B7]/40 rounded-xl overflow-hidden text-[11px] font-bold">
@@ -1085,7 +1085,7 @@ export default function Pos(props: PosProps = {}) {
             </div>
             
             {/* Action Buttons Fixed Footer */}
-            <div className="p-4 md:p-5 border-t border-[#EAD7B7]/60 bg-white shrink-0 sticky bottom-0">
+            <div className="sticky bottom-0 z-10 shrink-0 border-t border-[#EAD7B7]/60 bg-white p-4 shadow-[0_-8px_20px_rgba(44,57,42,0.06)] md:p-5">
               <button 
                 type="button"
                 onClick={generateBill}
