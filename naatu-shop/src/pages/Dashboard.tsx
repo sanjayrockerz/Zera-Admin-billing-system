@@ -173,6 +173,18 @@ export default function Dashboard() {
     }
   })
 
+  // Keep category management in sync with Billing Panel, which derives its
+  // category filters from active catalog products.
+  const billingCategoryNames = useMemo(() => new Set(
+    products
+      .filter(product => product.isActive && product.category)
+      .map(product => product.category.trim().toLowerCase())
+  ), [products])
+  const billingCategories = useMemo(
+    () => cats.filter(category => billingCategoryNames.has(category.name_en.trim().toLowerCase())),
+    [cats, billingCategoryNames]
+  )
+
   // Analytics global date filter
   const [analyticsDatePreset, setAnalyticsDatePreset] = useState<'all' | 'today' | 'week' | 'month' | 'year' | 'custom'>('all')
   const [analyticsDateFrom, setAnalyticsDateFrom] = useState('')
@@ -2820,7 +2832,7 @@ export default function Dashboard() {
                       <div className="mt-2 rounded-xl border border-[#EAD7B7]/60 bg-white p-2 space-y-1">
                         {cats.length === 0 ? (
                           <p className="px-2 py-1 text-[11px] text-[#6B7280]">No categories available.</p>
-                        ) : cats.map(c => (
+                        ) : billingCategories.map(c => (
                           <div key={c.id} className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 hover:bg-red-50">
                             <span className="truncate text-[12px] font-bold text-[#2C392A]">{c.name_en}</span>
                             <button
@@ -3206,7 +3218,7 @@ export default function Dashboard() {
                 <button type="submit" className="px-5 py-3 bg-[#111111] hover:bg-[#333333] transition-colors shadow-sm text-white font-black rounded-xl text-[13px]">{l('Add', 'à®šà¯‡à®°à¯')}</button>
               </form>
               <div className="space-y-3">
-                {cats.map(c => (
+                {billingCategories.map(c => (
                   <div key={c.id} className="flex items-center justify-between p-4 bg-white border border-[#F3F4F6] shadow-sm rounded-xl transition-colors hover:border-[#D1D5DB]">
                     <div>
                       <p className="text-[14px] font-bold text-[#111111]">{c.name_en}</p>
