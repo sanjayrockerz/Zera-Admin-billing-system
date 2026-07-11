@@ -1164,6 +1164,7 @@ export default function Dashboard() {
 
   const navItems: Array<{ id: TabKey; icon: React.ReactNode; label: string; protected?: boolean }> = [
     { id: 'billing',       icon: <ShoppingCart size={20} />,     label: 'Billing Panel' },
+    { id: 'categories',    icon: <Package size={20} />,           label: 'Categories' },
     { id: 'history',       icon: <List size={20} />,             label: 'Order History', protected: true },
     { id: 'pos_analytics', icon: <BarChart2 size={20} />,        label: 'Analytics Dashboard', protected: true },
     { id: 'coupons',       icon: <Box size={20} />,              label: 'Coupons', protected: true },

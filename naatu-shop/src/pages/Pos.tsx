@@ -242,6 +242,7 @@ export default function Pos(props: PosProps = {}) {
   // Manual product addition (minimal, non-destructive)
   const [manualName, setManualName] = useState('')
   const [manualPrice, setManualPrice] = useState('')
+  const [customItemOpen, setCustomItemOpen] = useState(false)
   const addManualItem = () => {
     setError('')
     const name = manualName.trim()
@@ -275,6 +276,7 @@ export default function Pos(props: PosProps = {}) {
     }
     setManualName('')
     setManualPrice('')
+    setCustomItemOpen(false)
     setItems(cur => [...cur, { ...makePosItem(prod), source: 'manual' }])
     setMobilePanelView('catalogue')
   }
@@ -713,12 +715,43 @@ export default function Pos(props: PosProps = {}) {
                   <Plus size={12} /> ADD TO CATALOG
                 </button>
                 <button 
-                  onClick={addManualItem}
+                  onClick={() => setCustomItemOpen(open => !open)}
                   className="min-h-[44px] w-full md:w-auto px-3 py-2 rounded-lg border border-[#8B2332] text-[#8B2332] text-[12px] md:text-[11px] font-black hover:bg-[#8B2332]/5 transition-colors flex items-center justify-center gap-1.5 text-center md:flex-1"
                 >
                   + ADD CUSTOM ITEM
                 </button>
               </div>
+              {customItemOpen && (
+                <form
+                  onSubmit={e => { e.preventDefault(); addManualItem() }}
+                  className="mt-3 grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_150px_auto] gap-2 rounded-xl border border-[#EAD7B7]/60 bg-[#FFFDFC] p-3"
+                >
+                  <input
+                    autoFocus
+                    required
+                    value={manualName}
+                    onChange={e => setManualName(e.target.value)}
+                    placeholder="Product name"
+                    className="h-10 rounded-lg border border-[#EAD7B7]/70 bg-white px-3 text-[12px] font-bold text-[#2C392A] outline-none focus:border-[#8B2332]"
+                  />
+                  <input
+                    required
+                    min="0.01"
+                    step="0.01"
+                    type="number"
+                    value={manualPrice}
+                    onChange={e => setManualPrice(e.target.value)}
+                    placeholder="Price (₹)"
+                    className="h-10 rounded-lg border border-[#EAD7B7]/70 bg-white px-3 text-[12px] font-bold text-[#2C392A] outline-none focus:border-[#8B2332]"
+                  />
+                  <button
+                    type="submit"
+                    className="h-10 rounded-lg bg-[#8B2332] px-4 text-[11px] font-black text-white hover:bg-[#6b1a25]"
+                  >
+                    ADD ITEM
+                  </button>
+                </form>
+              )}
             </div>
 
             {/* Table Header */}
