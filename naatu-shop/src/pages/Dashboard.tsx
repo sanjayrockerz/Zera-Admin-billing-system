@@ -3,7 +3,7 @@ import {
   BarChart2, Trash2, Edit2, List, ShoppingCart, LayoutDashboard,
   Box, AlertCircle, ArrowUp, ArrowDown, Power, Download, TrendingUp,
   Package, IndianRupee, Search, RefreshCw, ShieldCheck, ShieldOff, Trophy,
-  MessageCircle, ChevronDown, Eye, FileText,
+  MessageCircle, ChevronDown, Eye, FileText, Lock, LockOpen,
 } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
@@ -146,6 +146,14 @@ export default function Dashboard() {
   
   const [analyticsTab, setAnalyticsTab] = useState('revenue')
 
+  // Password protection for sensitive tabs
+  const PROTECTED_TABS: TabKey[] = ['pos_analytics', 'coupons', 'history']
+  const [unlockedTabs, setUnlockedTabs] = useState<Set<TabKey>>(new Set())
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
+  const [passwordInput, setPasswordInput] = useState('')
+  const [targetTab, setTargetTab] = useState<TabKey | null>(null)
+  const [passwordError, setPasswordError] = useState('')
+
   // WA detail expansion
   const [waExpandedId, setWaExpandedId] = useState<string | null>(null)
 
@@ -186,6 +194,34 @@ export default function Dashboard() {
   const toErr = (err: unknown, fb: string) =>
     err instanceof Error ? err.message
     : (err && typeof err === 'object' && 'message' in err) ? String((err as {message?:unknown}).message) || fb : fb
+
+  // Password protection for sensitive tabs
+  const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || 'sulficker11'
+
+  const verifyPassword = (input: string) => input === ADMIN_PASSWORD
+
+  const handleProtectedTabClick = (tabKey: TabKey) => {
+    if (PROTECTED_TABS.includes(tabKey) && !unlockedTabs.has(tabKey)) {
+      setTargetTab(tabKey)
+      setShowPasswordModal(true)
+      setPasswordInput('')
+      setPasswordError('')
+      return
+    }
+    setTab(tabKey)
+  }
+
+  const handlePasswordSubmit = () => {
+    if (verifyPassword(passwordInput)) {
+      setUnlockedTabs(prev => new Set(prev).add(targetTab!))
+      setShowPasswordModal(false)
+      setPasswordInput('')
+      if (targetTab) setTab(targetTab)
+      setTargetTab(null)
+    } else {
+      setPasswordError('Incorrect password')
+    }
+  }
 
   const toDashboardOrder = (row: Record<string, unknown>): DashboardOrder => ({
     id: String(row.id || ''), invoice_no: String(row.invoice_no || ''),
@@ -1108,11 +1144,11 @@ export default function Dashboard() {
     </div>
   )
 
-  const navItems: Array<{ id: TabKey; icon: React.ReactNode; label: string }> = [
+  const navItems: Array<{ id: TabKey; icon: React.ReactNode; label: string; protected?: boolean }> = [
     { id: 'billing',       icon: <ShoppingCart size={20} />,     label: 'Billing Panel' },
-    { id: 'history',       icon: <List size={20} />,             label: 'Order History' },
-    { id: 'pos_analytics', icon: <BarChart2 size={20} />,        label: 'Analytics Dashboard' },
-    { id: 'coupons',       icon: <Box size={20} />,              label: 'Coupons' },
+    { id: 'history',       icon: <List size={20} />,             label: 'Order History', protected: true },
+    { id: 'pos_analytics', icon: <BarChart2 size={20} />,        label: 'Analytics Dashboard', protected: true },
+    { id: 'coupons',       icon: <Box size={20} />,              label: 'Coupons', protected: true },
   ]
 
   return (
@@ -1159,8 +1195,8 @@ export default function Dashboard() {
           {navItems.map(item => (
             <button
               key={item.id}
-              onClick={() => setTab(item.id)}
-              title={item.label}
+              onClick={() => handleProtectedTabClick(item.id)}
+              title={item.label + (item.protected ? ' (Protected)' : '')}
               className={[
                 'shrink-0 flex flex-col lg:flex-row items-center justify-center lg:justify-start',
                 'gap-1 lg:gap-3',
@@ -1171,7 +1207,11 @@ export default function Dashboard() {
                 tab === item.id ? 'bg-white text-maroon-dark shadow-sm' : 'text-white/70 hover:bg-white/10 hover:text-white',
               ].join(' ')}
             >
-              <span className="shrink-0">{item.icon}</span>
+              <span className="shrink-0 flex items-center gap-1">
+                {item.icon}
+                {item.protected && !unlockedTabs.has(item.id) && <Lock size={12} className="text-white/50" />}
+                {item.protected && unlockedTabs.has(item.id) && <LockOpen size={12} className="text-white/50" />}
+              </span>
               <span className={`hidden lg:block truncate text-left transition-all duration-200 ${sidebarCollapsed ? 'w-0 opacity-0 overflow-hidden' : 'opacity-100 flex-1'}`}>
                 {item.label}
               </span>
@@ -3483,6 +3523,58 @@ export default function Dashboard() {
           </div>
         )}
       </main>
+
+      {/* Password Modal for Protected Tabs */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+                <Lock size={24} className="text-amber-600" />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-[#2C392A]">Protected Section</h3>
+                <p className="text-sm text-[#6B7280]">Enter admin password to access {targetTab?.replace('_', ' ')}</p>
+              </div>
+            </div>
+            
+            <input
+              type="password"
+              value={passwordInput}
+              onChange={(e) => setPasswordInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handlePasswordSubmit()}
+              placeholder="Enter password"
+              className="w-full px-4 py-3 rounded-xl border border-[#EAD7B7]/60 text-[14px] font-medium focus:outline-none focus:ring-2 focus:ring-sageDark focus:border-transparent mb-4"
+              autoFocus
+            />
+            
+            {passwordError && (
+              <p className="text-sm text-red-600 mb-4 text-center">{passwordError}</p>
+            )}
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowPasswordModal(false)
+                  setPasswordInput('')
+                  setPasswordError('')
+                  setTargetTab(null)
+                }}
+                className="flex-1 px-4 py-3 rounded-xl border border-[#EAD7B7]/60 text-[14px] font-bold text-[#5F6D59] hover:bg-[#F7F6F2] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handlePasswordSubmit}
+                disabled={!passwordInput}
+                className="flex-1 px-4 py-3 rounded-xl bg-sageDark text-white font-bold text-[14px] hover:bg-sageDeep transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Unlock
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
