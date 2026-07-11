@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Lock, Building, Eye, EyeOff, AlertCircle } from 'lucide-react'
+import { Lock, Eye, EyeOff, AlertCircle, ShieldCheck } from 'lucide-react'
 import { useAdminAuthStore } from '../store/store'
-import { BRAND_EN, BRAND_TA } from '../lib/brand'
+import { BRAND_EN, BRAND_TA, BRAND_SUBTITLE } from '../lib/brand'
 import { useLangStore } from '../store/langStore'
 
 export default function AdminLogin() {
@@ -33,16 +33,28 @@ export default function AdminLogin() {
   }
 
   return (
-    <div className="bg-gradient-to-br from-[#eaf2e5] to-[#f7f6f2] min-h-screen flex items-center justify-center p-4">
-      <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-xl border border-sand/40 w-full max-w-md">
-        {/* Brand */}
-        <div className="flex flex-col items-center mb-6">
-          <div className="w-12 h-12 bg-sage/30 rounded-2xl flex items-center justify-center mb-3">
-            <Building size={24} className="text-sageDark" />
+    <div className="relative min-h-screen overflow-hidden bg-[#f7f6f2] px-4 py-8 font-sans text-[#2C392A] sm:px-6 lg:flex lg:items-center lg:justify-center">
+      <div className="pointer-events-none absolute -left-32 -top-32 h-80 w-80 rounded-full bg-[#8B2332]/10 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-40 -right-24 h-96 w-96 rounded-full bg-[#7DAA8F]/20 blur-3xl" />
+      <div className="relative grid w-full max-w-5xl overflow-hidden rounded-[32px] border border-[#E7D9BF] bg-white shadow-[0_24px_80px_rgba(44,57,42,0.14)] lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="hidden flex-col justify-between bg-[#2C392A] p-10 text-white lg:flex">
+          <div>
+            <div className="mb-8 flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-lg"><img src="/logo.png" alt={`${BRAND_EN} logo`} className="h-full w-full object-contain p-1" /></div>
+            <p className="text-[11px] font-black uppercase tracking-[0.28em] text-[#B9D5C1]">{BRAND_SUBTITLE}</p>
+            <h2 className="mt-4 max-w-xs text-4xl font-black leading-tight tracking-tight">Everything you need to run billing clearly.</h2>
+            <p className="mt-5 max-w-sm text-sm leading-7 text-white/70">Manage products, bills, orders, invoices, and WhatsApp customer communication from one secure portal.</p>
           </div>
-          <h1 className="text-xl font-bold font-headline text-textMain text-center">{BRAND_EN}</h1>
-          <p className="text-[12px] text-textMuted mt-0.5 text-center">{BRAND_TA}</p>
-          <p className="mt-2.5 text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1 rounded-full">
+          <div className="flex items-center gap-2 text-xs font-bold text-white/60"><ShieldCheck size={16} className="text-[#B9D5C1]" /> Secure admin workspace</div>
+        </div>
+        <div className="p-6 sm:p-10 lg:p-12">
+        {/* Brand */}
+        <div className="mb-8 flex flex-col items-center text-center lg:items-start lg:text-left">
+          <div className="mb-5 flex h-20 w-20 items-center justify-center overflow-hidden rounded-3xl border border-[#E7D9BF] bg-[#FBFAF6] shadow-sm lg:hidden"><img src="/logo.png" alt={`${BRAND_EN} logo`} className="h-full w-full object-contain p-2" /></div>
+          <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[#8B2332]">{BRAND_SUBTITLE}</p>
+          <h1 className="mt-2 text-3xl font-black tracking-tight text-[#2C392A]">{BRAND_EN}</h1>
+          <p className="mt-1 text-sm font-semibold text-[#7A786F]">{BRAND_TA}</p>
+          <p className="mt-4 inline-flex items-center gap-2 rounded-full border border-[#E7D9BF] bg-[#FBFAF6] px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-[#8B2332]">
+            <ShieldCheck size={13} />
             {l('Admin Access', 'நிர்வாக அணுகல்')}
           </p>
         </div>
@@ -71,7 +83,7 @@ export default function AdminLogin() {
                 type={showPassword ? 'text' : 'password'}
                 autoComplete="current-password"
                 placeholder="Enter portal password"
-                className="w-full px-4 py-3 rounded-xl border-2 outline-none text-[13px] transition-colors border-sand focus:border-sageDark pr-12"
+                className="w-full rounded-2xl border-2 border-[#E7D9BF] bg-[#FBFAF6] px-4 py-3.5 pr-12 text-sm font-semibold outline-none transition-colors placeholder:text-[#AAA69C] focus:border-[#8B2332] focus:bg-white"
                 value={password}
                 onChange={(e) => { setPassword(e.target.value); setError('') }}
                 disabled={loading}
@@ -90,7 +102,7 @@ export default function AdminLogin() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-sageDark hover:bg-sageDeep text-white font-bold py-3.5 rounded-xl transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+            className="group flex w-full items-center justify-center gap-2 rounded-2xl bg-[#8B2332] py-3.5 font-black text-white shadow-lg shadow-[#8B2332]/20 transition-colors hover:bg-[#6B1A25] disabled:opacity-60"
           >
             {loading ? (
               <>
@@ -105,11 +117,12 @@ export default function AdminLogin() {
             )}
           </button>
 
-          <p className="text-center text-[11px] text-gray-400 leading-relaxed">
+          <p className="text-center text-[11px] leading-relaxed text-[#9A978E]">
             {l('Enter the portal password to access the admin dashboard.', 'நிர்வாக டாஷ்போர்ட்டில் அணுக கடவுச்சொல்லை உள்ளிடவும்.')}
           </p>
         </form>
       </div>
-    </div>
+        </div>
+      </div>
   )
 }
