@@ -131,6 +131,8 @@ export default function Dashboard() {
   const [editingProd, setEditingProd] = useState<Product | null>(null)
   const [prodForm, setProdForm] = useState(emptyForm)
   const [newCat, setNewCat] = useState({ name_en: '', name_ta: '' })
+  const [categoryNotice, setCategoryNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [categoryManagerOpen, setCategoryManagerOpen] = useState(false)
   const [coupons, setCoupons] = useState<DashboardCoupon[]>([])
   const [couponForm, setCouponForm] = useState({ code: '', percentage: 10, expiry_date: '', usage_limit: '', min_order_value: '' })
   const [couponSaveError, setCouponSaveError] = useState('')
@@ -1100,14 +1102,30 @@ export default function Dashboard() {
   }
 
   const onAddCat = async (e: FormEvent) => {
-    e.preventDefault(); if (!newCat.name_en) return
-    const { error } = await supabase.from('categories').insert({ ...newCat, is_active: true })
-    if (!error) { setNewCat({ name_en: '', name_ta: '' }); await loadData() }
+    e.preventDefault()
+    if (!newCat.name_en.trim()) return
+    const { error } = await supabase.from('categories').insert({ ...newCat, name_en: newCat.name_en.trim(), is_active: true })
+    if (error) {
+      setCategoryNotice({ type: 'error', text: error.message || 'Could not add category.' })
+      return
+    }
+    setNewCat({ name_en: '', name_ta: '' })
+    setCategoryNotice({ type: 'success', text: 'Category added successfully.' })
+    await loadData()
   }
 
   const deleteCat = async (c: Category) => {
-    if (!window.confirm(`Delete "${c.name_en}"?`)) return
-    await supabase.from('categories').delete().eq('id', c.id); await loadData()
+    if (!window.confirm(`Delete "${c.name_en}"? This cannot be undone.`)) return
+    const { error } = await supabase.from('categories').delete().eq('id', c.id)
+    if (error) {
+      setCategoryNotice({ type: 'error', text: error.message || 'Could not delete category.' })
+      return
+    }
+    if (prodForm.categoryId === c.id || prodForm.category === c.name_en) {
+      setProdForm(form => ({ ...form, category: '', categoryId: null }))
+    }
+    setCategoryNotice({ type: 'success', text: `"${c.name_en}" deleted.` })
+    await loadData()
   }
 
   const toggleCat = async (c: Category) => {
@@ -1156,7 +1174,7 @@ export default function Dashboard() {
       {/* Sidebar */}
       <aside
         className={[
-          'w-full bg-maroon-dark text-white border-b lg:border-b-0 lg:border-r border-maroon-dark flex flex-col shrink-0',
+          'w-full bg-maroon-dark text-white border-b lg:border-b-0 lg:border-r border-maroon-dark flex flex-col shrink-0 lg:min-h-screen',
           'transition-[width] duration-300 ease-in-out overflow-hidden',
           sidebarCollapsed ? 'lg:w-[88px]' : 'lg:w-[260px]',
         ].join(' ')}
@@ -1190,7 +1208,7 @@ export default function Dashboard() {
         </div>
         {/* Nav */}
         <nav
-          className={`grid grid-cols-5 lg:flex lg:flex-col overflow-visible gap-2 px-3 py-3 lg:py-2 lg:flex-grow transition-all duration-300 ${sidebarCollapsed ? 'lg:px-2' : 'lg:px-4'}`}
+          className={`grid grid-cols-2 sm:grid-cols-3 lg:flex lg:flex-col overflow-visible gap-2 px-3 py-3 lg:py-2 lg:flex-grow transition-all duration-300 ${sidebarCollapsed ? 'lg:px-2' : 'lg:px-4'}`}
         >
           {navItems.map(item => (
             <button
@@ -1236,6 +1254,9 @@ export default function Dashboard() {
             <span className={`hidden lg:block truncate text-left transition-all duration-200 ${sidebarCollapsed ? 'w-0 opacity-0 overflow-hidden' : 'opacity-100 flex-1'}`}>Logout</span>
           </button>
         </nav>
+        <div className={`hidden lg:block shrink-0 border-t border-white/10 px-4 py-4 text-center transition-all duration-300 ${sidebarCollapsed ? 'lg:px-2' : ''}`}>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/40">Powered by Cenexa</p>
+        </div>
       </aside>
 
       {/* Main */}
@@ -2787,6 +2808,33 @@ export default function Dashboard() {
                       <option value="">{l('Select category...', 'à®µà®•à¯ˆ à®¤à¯‡à®°à¯à®µà¯ à®šà¯†à®¯à¯à®¯à¯à®™à¯à®•à®³à¯...')}</option>
                       {cats.map(c => <option key={c.id} value={c.name_en}>{c.name_en}</option>)}
                     </select>
+                    <button
+                      type="button"
+                      onClick={() => setCategoryManagerOpen(open => !open)}
+                      className="mt-2 text-[11px] font-black text-maroon-dark hover:underline"
+                    >
+                      {categoryManagerOpen ? 'Hide categories' : 'Manage categories'}
+                    </button>
+                    {categoryManagerOpen && (
+                      <div className="mt-2 rounded-xl border border-[#EAD7B7]/60 bg-white p-2 space-y-1">
+                        {cats.length === 0 ? (
+                          <p className="px-2 py-1 text-[11px] text-[#6B7280]">No categories available.</p>
+                        ) : cats.map(c => (
+                          <div key={c.id} className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 hover:bg-red-50">
+                            <span className="truncate text-[12px] font-bold text-[#2C392A]">{c.name_en}</span>
+                            <button
+                              type="button"
+                              onClick={() => void deleteCat(c)}
+                              className="shrink-0 rounded-lg p-1.5 text-red-500 hover:bg-red-100 hover:text-red-700"
+                              aria-label={`Delete ${c.name_en}`}
+                              title={`Delete ${c.name_en}`}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -3142,6 +3190,11 @@ export default function Dashboard() {
           <div className="max-w-lg space-y-6">
             <div className="bg-white rounded-2xl border border-borderLight p-6 shadow-sm">
               <h3 className="text-[18px] font-black text-[#111111] mb-5">{l('Product Categories', 'à®ªà¯Šà®°à¯à®³à¯ à®µà®•à¯ˆà®•à®³à¯')}</h3>
+              {categoryNotice && (
+                <div className={`mb-4 rounded-xl px-3 py-2.5 text-[12px] font-bold ${categoryNotice.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                  {categoryNotice.text}
+                </div>
+              )}
               <form onSubmit={onAddCat} className="flex gap-3 mb-6">
                 <input className="flex-grow px-4 py-3 bg-[#FAFAFA] border border-[#F3F4F6] focus:border-maroon-dark outline-none rounded-xl text-[13px] font-bold transition-colors shadow-sm"
                   placeholder={l('Category name (English)', 'à®µà®•à¯ˆ à®ªà¯†à®¯à®°à¯ (English)')} value={newCat.name_en}
@@ -3525,10 +3578,6 @@ export default function Dashboard() {
       </main>
 
       {/* Footer */}
-      <footer className="lg:pl-[260px] lg:transition-all lg:duration-300 p-4 text-center text-sm text-gray-500 border-t border-gray-100 bg-white">
-        <p>© {new Date().getFullYear()} ZERA. All rights reserved.</p>
-        <p className="mt-1">Powered by ZERA Admin Panel</p>
-      </footer>
 
       {/* Password Modal for Protected Tabs */}
       {showPasswordModal && (
