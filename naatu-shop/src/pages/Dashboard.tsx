@@ -3526,8 +3526,7 @@ export default function Dashboard() {
                   <span className="text-xl font-black text-[#8B2332]">{formatCurrency(selectedOrder.total)}</span>
                 </div>
                 <div className="flex flex-wrap justify-end gap-2">
-                  {selectedOrder.invoice_no && <Link to={`/invoice/${encodeURIComponent(selectedOrder.invoice_no)}`} onClick={() => setSelectedOrder(null)} className="inline-flex items-center gap-2 rounded-xl border border-[#EAD7B7]/60 px-4 py-2.5 text-sm font-black text-[#2C392A] hover:bg-[#F7F6F2]"><FileText size={15} /> Open Invoice</Link>}
-                  <button onClick={() => void sendOrderWhatsApp(selectedOrder)} className="inline-flex items-center gap-2 rounded-xl bg-green-500 px-4 py-2.5 text-sm font-black text-white hover:bg-green-600"><MessageCircle size={15} /> WhatsApp PDF</button>
+                  <button onClick={() => { void sendOrderWhatsApp(selectedOrder); setSelectedOrder(null); }} className="inline-flex items-center gap-2 rounded-xl bg-green-500 px-4 py-2.5 text-sm font-black text-white hover:bg-green-600"><MessageCircle size={15} /> WhatsApp PDF</button>
                 </div>
               </div>
             </div>
