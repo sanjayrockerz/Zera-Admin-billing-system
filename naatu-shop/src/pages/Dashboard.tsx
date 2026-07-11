@@ -368,13 +368,14 @@ export default function Dashboard() {
       .map(([name, data]) => ({ name, value: data.revenue }))
 
     // Trend charts
+    const chartYear = new Date().getFullYear()
     const monthlyRevenueMap = new Map<string, number>()
     billableCompleted.forEach(o => {
       const k = toLocalMonthKey(o.created_at)
       monthlyRevenueMap.set(k, (monthlyRevenueMap.get(k) || 0) + toNumber(o.total, 0))
     })
     const monthlyTrend = Array.from({ length: 12 }, (_, i) => {
-      const d = new Date(); d.setMonth(d.getMonth() - (11 - i))
+      const d = new Date(chartYear, i, 1)
       const k = toLocalMonthKey(d)
       return { key: k, month: d.toLocaleDateString('en-IN', { month: 'short' }), revenue: monthlyRevenueMap.get(k) || 0 }
     })
@@ -504,6 +505,7 @@ export default function Dashboard() {
       bestCategory,
       bestProduct,
       monthlyTrend,
+      chartYear,
       channelDistribution,
       statusDistribution,
       topCoupons,
@@ -637,16 +639,13 @@ export default function Dashboard() {
     setSearchResults(prev => prev.filter(o => o.id !== orderId))
   }
 
-  const sendOrderWhatsApp = async (order: DashboardOrder) => {
+  const getOrderWhatsAppPreview = (order: DashboardOrder) => {
     const rawItems = parseOrderItems(order.items)
     const fallbackItems = orderItems
       .filter(item => item.order_id === order.id)
       .map(item => ({ name: item.product_name, quantity: item.quantity, line_total: item.line_total }))
     const items = (rawItems.length ? rawItems : fallbackItems).map(normalizeStructuredOrderItem)
-    if (!items.length) {
-      alert('This order has no item details to send.')
-      return
-    }
+    if (!items.length) return null
 
     const subtotal = items.reduce((sum, item) => sum + toNumber(item.line_total, 0), 0)
     const message = buildProfessionalWhatsAppMessage({
@@ -667,6 +666,16 @@ export default function Dashboard() {
       shipping: order.delivery_charge,
       total: order.total,
     })
+    return { items, subtotal, message, fileName: `Invoice-${order.invoice_no || order.id}.pdf` }
+  }
+
+  const sendOrderWhatsApp = async (order: DashboardOrder) => {
+    const preview = getOrderWhatsAppPreview(order)
+    if (!preview) {
+      alert('This order has no item details to send.')
+      return
+    }
+    const { items, subtotal, message } = preview
     const file = invoicePdfFile({
       invoiceNo: order.invoice_no || order.id,
       date: order.created_at,
@@ -1831,7 +1840,7 @@ export default function Dashboard() {
                 <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                   <div className="xl:col-span-2 bg-white rounded-card border border-borderLight p-6 shadow-soft">
                     <div className="flex items-center gap-3 mb-6">
-                      <h3 className="text-[16px] font-bold text-[#111111]">Revenue Trend This Year 2026</h3>
+                      <h3 className="text-[16px] font-bold text-[#111111]">Revenue Trend {analytics.chartYear}</h3>
                     </div>
                     <div className="flex items-end gap-4 mb-4">
                       <span className="text-[24px] font-bold text-[#111111]">{formatCurrency(analytics.totalCompletedRevenue)}</span>
@@ -2526,8 +2535,8 @@ export default function Dashboard() {
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <button onClick={() => o.invoice_no ? navigate(`/invoice/${encodeURIComponent(o.invoice_no)}`) : setSelectedOrder(o)} className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl border border-[#EAD7B7]/60 px-3 text-[12px] font-black text-[#2C392A] transition-colors hover:bg-white" title="View Details">
-                          <Eye size={14} /> View Details
+                        <button onClick={() => setSelectedOrder(selectedOrder?.id === o.id ? null : o)} className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl border border-[#EAD7B7]/60 px-3 text-[12px] font-black text-[#2C392A] transition-colors hover:bg-white" title="View Details">
+                          <Eye size={14} /> {selectedOrder?.id === o.id ? 'Close' : 'View Details'}
                         </button>
                         <button onClick={() => void sendOrderWhatsApp(o)} className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl bg-green-500 px-3 text-[12px] font-black text-white transition-colors hover:bg-green-600" title="Download PDF and open WhatsApp">
                           <MessageCircle size={14} /> WhatsApp PDF
@@ -2561,7 +2570,9 @@ export default function Dashboard() {
                     {filteredSearchResults.slice(0, 50).map(o => {
                       const billTypeLabel = normalizeOrderType(o.order_type) === 'manual_sale' ? 'MANUAL' : normalizeOrderMode(o.order_mode) === 'online' ? 'ONLINE' : 'OFFLINE'
                       const billTypeClass = normalizeOrderType(o.order_type) === 'manual_sale' ? 'bg-purple-50 text-purple-700' : normalizeOrderMode(o.order_mode) === 'online' ? 'bg-blue-50 text-blue-700' : 'bg-orange-50 text-orange-700'
+                      const waPreview = selectedOrder?.id === o.id ? getOrderWhatsAppPreview(o) : null
                       return (
+                        <React.Fragment key={o.id}>
                         <tr key={o.id} className="hover:bg-[#F7F6F2]">
                           <td className="whitespace-nowrap px-3 py-3 text-[12px] font-bold text-[#2C392A]">{o.invoice_no || '—'}</td>
                           <td className="max-w-[110px] truncate px-3 py-3 text-[12px] font-semibold text-[#2C392A]">{o.customer_name}</td>
@@ -2592,7 +2603,7 @@ export default function Dashboard() {
                           </td>
                           <td className="px-3 py-3">
                             <div className="flex items-center gap-1">
-                              <button onClick={() => o.invoice_no ? navigate(`/invoice/${encodeURIComponent(o.invoice_no)}`) : setSelectedOrder(o)} className="rounded-lg p-1.5 text-[#2C392A] transition-colors hover:bg-[#F7F6F2]" title="View Details">
+                              <button onClick={() => setSelectedOrder(selectedOrder?.id === o.id ? null : o)} className="rounded-lg p-1.5 text-[#2C392A] transition-colors hover:bg-[#F7F6F2]" title="View Details">
                                 <Eye size={14} />
                               </button>
                               <button onClick={() => void sendOrderWhatsApp(o)} className="rounded-lg p-1.5 text-green-600 transition-colors hover:bg-green-50" title="Download PDF and open WhatsApp">
@@ -2601,6 +2612,27 @@ export default function Dashboard() {
                             </div>
                           </td>
                         </tr>
+                        {waPreview && (
+                          <tr key={`${o.id}-details`}>
+                            <td colSpan={11} className="border-b border-[#EAD7B7]/50 bg-[#FBFAF6] p-4">
+                              <div className="overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm">
+                                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-blue-100 bg-blue-50/60 px-4 py-3">
+                                  <div className="flex items-center gap-2"><FileText size={18} className="text-blue-600" /><div><p className="font-black text-[#2C392A]">Invoice {o.invoice_no || o.id}</p><p className="text-[11px] text-[#6B7280]">Generated {new Date(o.created_at).toLocaleString('en-IN')}</p></div></div>
+                                  <span className="rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-700">WhatsApp Package Ready</span>
+                                </div>
+                                <div className="grid gap-4 p-4 lg:grid-cols-2">
+                                  <div className="space-y-3">
+                                    <div className="rounded-xl border border-[#EAD7B7]/60 bg-[#FBFAF6] p-3"><p className="text-[10px] font-black uppercase tracking-wider text-[#7A786F]">PDF Attachment</p><p className="mt-1 text-sm font-black text-[#2C392A]">{waPreview.fileName}</p><p className="mt-1 text-[11px] text-[#6B7280]">Branded invoice with customer, items, totals, and payment summary.</p></div>
+                                    <div className="rounded-xl border border-[#EAD7B7]/60 p-3"><p className="text-[10px] font-black uppercase tracking-wider text-[#7A786F]">WhatsApp Recipient</p><p className="mt-1 text-sm font-black text-[#2C392A]">{o.customer_name || 'Walk-in Customer'}</p><p className="text-[11px] text-[#6B7280]">{o.phone || 'Store WhatsApp fallback'}</p></div>
+                                    <div className="rounded-xl border border-[#EAD7B7]/60 p-3"><p className="text-[10px] font-black uppercase tracking-wider text-[#7A786F]">Invoice Contents</p>{waPreview.items.map((item, index) => <div key={`${item.name}-${index}`} className="flex justify-between border-b border-[#EAD7B7]/30 py-2 text-[12px] last:border-0"><span className="font-semibold text-[#2C392A]">{item.name} × {item.quantity}</span><span className="font-black">{formatCurrency(item.line_total)}</span></div>)}<div className="flex justify-between pt-2 text-sm font-black"><span>Total</span><span>{formatCurrency(o.total)}</span></div></div>
+                                  </div>
+                                  <div><div className="mb-2 flex items-center justify-between"><p className="text-[10px] font-black uppercase tracking-wider text-[#7A786F]">Message Prepared for WhatsApp</p><span className="text-[11px] font-black text-emerald-700">Text + PDF</span></div><pre className="max-h-72 overflow-auto rounded-xl bg-[#191919] p-4 text-[11px] leading-relaxed text-white whitespace-pre-wrap">{waPreview.message}</pre><div className="mt-3 flex justify-end gap-2"><button onClick={() => setSelectedOrder(null)} className="rounded-xl bg-[#191919] px-4 py-2 text-[12px] font-black text-white">Close</button><button onClick={() => void sendOrderWhatsApp(o)} className="rounded-xl bg-green-500 px-4 py-2 text-[12px] font-black text-white hover:bg-green-600"><MessageCircle size={13} className="mr-1 inline" /> Send WhatsApp PDF</button></div></div>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                        </React.Fragment>
                       )
                     })}
                     {filteredSearchResults.length === 0 && (
