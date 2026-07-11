@@ -3524,6 +3524,12 @@ export default function Dashboard() {
         )}
       </main>
 
+      {/* Footer */}
+      <footer className="lg:pl-[260px] lg:transition-all lg:duration-300 p-4 text-center text-sm text-gray-500 border-t border-gray-100 bg-white">
+        <p>© {new Date().getFullYear()} ZERA. All rights reserved.</p>
+        <p className="mt-1">Powered by ZERA Admin Panel</p>
+      </footer>
+
       {/* Password Modal for Protected Tabs */}
       {showPasswordModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
