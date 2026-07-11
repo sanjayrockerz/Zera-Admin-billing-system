@@ -2,10 +2,13 @@ import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import { Invoice } from '../components/Invoice'
-import { Printer, ArrowLeft, Receipt } from 'lucide-react'
+import { Printer, ArrowLeft, Receipt, MessageCircle } from 'lucide-react'
 import { printThermalReceipt } from '../lib/thermalPrint'
 import { invoicePdfFile } from '../lib/invoicePdf'
+import { uploadInvoicePdf } from '../lib/storage'
 import { normalizeStructuredOrderItem } from '../lib/retail'
+import { buildProfessionalWhatsAppMessage } from '../lib/whatsappMessage'
+import { toWhatsAppUrl } from '../lib/phone'
 
 export default function DigitalInvoice() {
   const { id } = useParams()
@@ -65,9 +68,10 @@ export default function DigitalInvoice() {
     )
   }
 
-  const invoiceItems = (Array.isArray(invoice.items) ? invoice.items : [])
+const invoiceItems = (Array.isArray(invoice.items) ? invoice.items : [])
     .map((item: Record<string, unknown>) => normalizeStructuredOrderItem(item))
   const subtotal = invoiceItems.reduce((sum: number, item: ReturnType<typeof normalizeStructuredOrderItem>) => sum + item.line_total, 0)
+
   const downloadPdf = () => {
     const file = invoicePdfFile({
       invoiceNo: invoice.invoice_no,
@@ -93,6 +97,74 @@ export default function DigitalInvoice() {
     setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
 
+  const shareViaWhatsApp = async () => {
+    const items = invoiceItems.map((item: ReturnType<typeof normalizeStructuredOrderItem>) => ({
+      name: item.name,
+      qty: item.quantity,
+      unit: item.unit,
+      unitType: item.unit_type,
+      rate: item.base_price,
+      lineTotal: item.line_total,
+    }))
+    const message = buildProfessionalWhatsAppMessage({
+      customerName: invoice.customer_name,
+      phone: invoice.phone,
+      invoiceNumber: invoice.invoice_no,
+      invoiceDate: invoice.created_at,
+      items,
+      subtotal,
+      couponDiscount: invoice.discount_amount,
+      manualDiscountAmount: invoice.manual_discount_amount,
+      shipping: invoice.delivery_charge,
+      gstAmount: invoice.total_gst || invoice.gst_amount || 0,
+      total: invoice.total,
+      paymentMode: invoice.payment_mode || invoice.payment_method,
+    })
+
+    const file = invoicePdfFile({
+      invoiceNo: invoice.invoice_no,
+      date: invoice.created_at,
+      customerName: invoice.customer_name,
+      phone: invoice.phone,
+      address: invoice.address,
+      items: invoiceItems as unknown as Array<Record<string, unknown>>,
+      subtotal,
+      shipping: Number(invoice.delivery_charge || 0),
+      total: Number(invoice.total || 0),
+      discountAmount: Number(invoice.discount_amount || 0),
+      manualDiscountAmount: Number(invoice.manual_discount_amount || 0),
+      gstAmount: Number(invoice.total_gst || invoice.gst_amount || 0),
+      couponCode: invoice.coupon_code || undefined,
+      paymentMode: invoice.payment_mode || invoice.payment_method || undefined,
+    })
+
+    let downloadLink = ''
+    try {
+      downloadLink = await uploadInvoicePdf(file, invoice.invoice_no)
+    } catch (err) {
+      console.warn('Failed to upload invoice PDF:', err)
+    }
+
+    const whatsappMessage = downloadLink
+      ? `${message}\n\n📄 Download Invoice: ${downloadLink}`
+      : `${message}\n\nThe PDF was downloaded. Please attach it in this chat before sending.`
+
+    if (navigator.share && navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: `Invoice ${invoice.invoice_no}`, text: whatsappMessage })
+        return
+      } catch { /* fall through */ }
+    }
+
+    const downloadUrl = URL.createObjectURL(file)
+    const link = document.createElement('a')
+    link.href = downloadUrl
+    link.download = file.name
+    link.click()
+    setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000)
+    window.open(`${toWhatsAppUrl(invoice.phone)}?text=${encodeURIComponent(whatsappMessage)}`, '_blank', 'noopener,noreferrer')
+  }
+
   return (
     <div className="min-h-screen bg-[#f9faf6] font-sans pb-12 print:bg-white print:pb-0">
       {/* Top action bar */}
@@ -100,7 +172,7 @@ export default function DigitalInvoice() {
         <Link to="/" className="flex items-center gap-2 text-sageDark hover:text-[#2d5a27] font-semibold text-sm transition-colors bg-white border border-sand/40 px-4 py-2 rounded-full shadow-sm">
           <ArrowLeft size={16} /> Back
         </Link>
-        <div className="flex items-center gap-2">
+<div className="flex items-center gap-2">
           <button 
             onClick={downloadPdf}
             className="flex items-center gap-2 bg-[#881337] text-white px-5 py-2 rounded-full font-bold text-sm shadow-md hover:bg-[#6c0f2c] transition-colors"
@@ -108,6 +180,12 @@ export default function DigitalInvoice() {
             <Printer size={16} /> PDF
           </button>
           <button 
+            onClick={shareViaWhatsApp}
+            className="flex items-center gap-2 bg-green-500 text-white px-5 py-2 rounded-full font-bold text-sm shadow-md hover:bg-green-600 transition-colors"
+          >
+            <MessageCircle size={16} /> WhatsApp
+          </button>
+          <button
             onClick={() => {
               const subtotal = invoice.total - (invoice.delivery_charge || 0) + (invoice.discount_amount || 0)
               printThermalReceipt({
