@@ -4,6 +4,8 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import { Invoice } from '../components/Invoice'
 import { Printer, ArrowLeft, Receipt } from 'lucide-react'
 import { printThermalReceipt } from '../lib/thermalPrint'
+import { invoicePdfFile } from '../lib/invoicePdf'
+import { normalizeStructuredOrderItem } from '../lib/retail'
 
 export default function DigitalInvoice() {
   const { id } = useParams()
@@ -63,6 +65,34 @@ export default function DigitalInvoice() {
     )
   }
 
+  const invoiceItems = (Array.isArray(invoice.items) ? invoice.items : [])
+    .map((item: Record<string, unknown>) => normalizeStructuredOrderItem(item))
+  const subtotal = invoiceItems.reduce((sum: number, item: ReturnType<typeof normalizeStructuredOrderItem>) => sum + item.line_total, 0)
+  const downloadPdf = () => {
+    const file = invoicePdfFile({
+      invoiceNo: invoice.invoice_no,
+      date: invoice.created_at,
+      customerName: invoice.customer_name,
+      phone: invoice.phone,
+      address: invoice.address,
+      items: invoiceItems as unknown as Array<Record<string, unknown>>,
+      subtotal,
+      shipping: Number(invoice.delivery_charge || 0),
+      total: Number(invoice.total || 0),
+      discountAmount: Number(invoice.discount_amount || 0),
+      manualDiscountAmount: Number(invoice.manual_discount_amount || 0),
+      gstAmount: Number(invoice.total_gst || invoice.gst_amount || 0),
+      couponCode: invoice.coupon_code || undefined,
+      paymentMode: invoice.payment_mode || invoice.payment_method || undefined,
+    })
+    const url = URL.createObjectURL(file)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = file.name
+    link.click()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }
+
   return (
     <div className="min-h-screen bg-[#f9faf6] font-sans pb-12 print:bg-white print:pb-0">
       {/* Top action bar */}
@@ -72,7 +102,7 @@ export default function DigitalInvoice() {
         </Link>
         <div className="flex items-center gap-2">
           <button 
-            onClick={() => window.print()}
+            onClick={downloadPdf}
             className="flex items-center gap-2 bg-[#881337] text-white px-5 py-2 rounded-full font-bold text-sm shadow-md hover:bg-[#6c0f2c] transition-colors"
           >
             <Printer size={16} /> PDF
@@ -115,12 +145,15 @@ export default function DigitalInvoice() {
             phone={invoice.phone}
             address={invoice.address}
             items={invoice.items || []}
-            subtotal={invoice.total - (invoice.delivery_charge || 0) + (invoice.discount_amount || 0)}
+            subtotal={subtotal}
             shipping={invoice.delivery_charge || 0}
             discountAmount={invoice.discount_amount || 0}
+            manualDiscountAmount={invoice.manual_discount_amount || 0}
+            gstAmount={invoice.total_gst || invoice.gst_amount || 0}
             couponCode={invoice.coupon_code}
             total={invoice.total}
             status={invoice.status}
+            paymentMode={invoice.payment_mode || invoice.payment_method}
           />
         </div>
       </div>
