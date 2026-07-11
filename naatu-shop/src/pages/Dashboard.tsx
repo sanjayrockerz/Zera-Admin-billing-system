@@ -220,8 +220,10 @@ export default function Dashboard() {
 
     // Billable = completed and NOT online_request
     const billableCompleted = completedOrders.filter(o => normalizeOrderType(o.order_type) !== 'online_request')
-    const offlinePOS  = billableCompleted.filter(o => normalizeOrderType(o.order_type) === 'pos_sale' && normalizeOrderMode(o.order_mode) !== 'online')
-    const onlinePOS   = billableCompleted.filter(o => normalizeOrderType(o.order_type) === 'pos_sale' && normalizeOrderMode(o.order_mode) === 'online')
+    // Channel is determined by order_mode. Older orders can use a different
+    // order_type, so requiring exactly `pos_sale` hides valid online bills.
+    const offlinePOS  = billableCompleted.filter(o => normalizeOrderMode(o.order_mode) === 'offline' && normalizeOrderType(o.order_type) !== 'manual_sale')
+    const onlinePOS   = billableCompleted.filter(o => normalizeOrderMode(o.order_mode) === 'online')
     const manualSales = billableCompleted.filter(o => normalizeOrderType(o.order_type) === 'manual_sale')
 
     // Revenue (WhatsApp never included)
@@ -499,6 +501,8 @@ export default function Dashboard() {
       completedOrders: billableCompleted.length,
       posRevenue,
       onlinePosRevenue,
+      onlineOrderCount: onlinePOS.length,
+      offlineOrderCount: offlinePOS.length,
       manualRevenue: manualRevenue || totalManualRevenue,
       monthlyRevenue,
       totalProductsSold,
@@ -1818,8 +1822,8 @@ export default function Dashboard() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
                   {[
-                    { label: 'TOTAL OFFLINE BILLS', helper: 'Walk-in POS orders',    value: analytics.completedOrders,                       icon: <LayoutDashboard size={16} />, color: 'text-red-500',    bg: 'bg-red-50' },
-                    { label: 'TOTAL ONLINE BILLS',  helper: 'Online channel orders', value: 0,                                               icon: <Box size={16} />,             color: 'text-blue-500',   bg: 'bg-blue-50' },
+                    { label: 'TOTAL OFFLINE BILLS', helper: 'Walk-in POS orders',    value: analytics.offlineOrderCount,                    icon: <LayoutDashboard size={16} />, color: 'text-red-500',    bg: 'bg-red-50' },
+                    { label: 'TOTAL ONLINE BILLS',  helper: 'Online channel orders', value: analytics.onlineOrderCount,                     icon: <Box size={16} />,             color: 'text-blue-500',   bg: 'bg-blue-50' },
                     { label: 'TOTAL ITEMS SOLD',    helper: 'From completed bills',  value: Math.round(analytics.totalProductsSold),         icon: <Box size={16} />,             color: 'text-purple-500', bg: 'bg-purple-50' },
                     { label: 'AVG ORDER VALUE',     helper: 'Per completed order',   value: formatCurrency(analytics.completedOrders > 0 ? analytics.totalCompletedRevenue / analytics.completedOrders : 0), icon: <IndianRupee size={16} />, color: 'text-emerald-500', bg: 'bg-emerald-50' },
                     { label: 'TOP PRODUCT',         helper: 'Most sold item',        value: analytics.bestProduct || '-',                    icon: <Trophy size={16} />,          color: 'text-pink-500',   bg: 'bg-pink-50' },
@@ -2182,6 +2186,10 @@ export default function Dashboard() {
                               <p className="text-[#9BAB9A] uppercase text-[11px] font-black">Bills</p>
                               <p className="font-bold text-[#2C392A]">{p.billCount}</p>
                             </div>
+                            <div>
+                              <p className="text-[#9BAB9A] uppercase text-[11px] font-black">Avg Revenue/Bill</p>
+                              <p className="font-bold text-[#2C392A]">{formatCurrency(p.billCount > 0 ? p.revenue / p.billCount : 0)}</p>
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -2196,6 +2204,7 @@ export default function Dashboard() {
                             <th className="px-4 py-2.5 font-black">Qty Sold</th>
                             <th className="px-4 py-2.5 font-black">Revenue</th>
                             <th className="px-4 py-2.5 font-black">Bills</th>
+                            <th className="px-4 py-2.5 font-black">Avg Revenue/Bill</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-[#EAD7B7]/20">
@@ -2207,6 +2216,7 @@ export default function Dashboard() {
                               <td className="px-4 py-2 font-bold">{Math.round(p.qty)}</td>
                               <td className="px-4 py-2 font-bold text-emerald-700">{formatCurrency(p.revenue)}</td>
                               <td className="px-4 py-2 text-[#5F6D59]">{p.billCount}</td>
+                              <td className="px-4 py-2 font-bold text-[#2C392A]">{formatCurrency(p.billCount > 0 ? p.revenue / p.billCount : 0)}</td>
                             </tr>
                           ))}
                         </tbody>
