@@ -24,7 +24,6 @@ import { buildProfessionalWhatsAppMessage } from '../lib/whatsappMessage'
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { getProductImage, onImgError } from '../lib/productImages'
 import { normalizeIndianPhone, toWhatsAppUrl } from '../lib/phone'
-import { invoicePdfFile } from '../lib/invoicePdf'
 import { useLangStore } from '../store/langStore'
 import type { ProductVariant } from '../services/variantService'
 
@@ -463,7 +462,7 @@ export default function Pos(props: PosProps = {}) {
   const change = cashReceived && Number(cashReceived) >= total
     ? Number(cashReceived) - total : null
 
-  const sendPosWhatsApp = async (inv: InvoiceSnap) => {
+  const sendPosWhatsApp = (inv: InvoiceSnap) => {
     const waLink = toWhatsAppUrl(inv.phone || customer.phone || '')
     const invoiceUrl = `${window.location.origin}/invoice/${inv.invoiceNo}`
     const message = buildProfessionalWhatsAppMessage({
@@ -486,24 +485,7 @@ export default function Pos(props: PosProps = {}) {
       gstAmount: inv.gstAmount,
       total: inv.total,
     }) + `\n\n📄 Invoice PDF: ${invoiceUrl}`
-    const file = invoicePdfFile({
-      invoiceNo: inv.invoiceNo, date: inv.date, customerName: inv.customerName, phone: inv.phone,
-      address: inv.address, items: inv.items as unknown as Array<Record<string, unknown>>,
-      subtotal: inv.subtotal, shipping: inv.shipping, total: inv.total,
-      discountAmount: inv.couponDiscount, manualDiscountAmount: inv.manualDiscountAmount,
-      gstAmount: inv.gstAmount, couponCode: inv.couponCode, paymentMode: inv.paymentMode,
-    })
-    if (navigator.share && navigator.canShare?.({ files: [file] })) {
-      try {
-        await navigator.share({ files: [file], title: `Invoice ${inv.invoiceNo}`, text: message })
-        return
-      } catch { /* user cancelled the share sheet; use the WhatsApp fallback below */ }
-    }
-    const downloadUrl = URL.createObjectURL(file)
-    const link = document.createElement('a')
-    link.href = downloadUrl; link.download = file.name; link.click()
-    setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000)
-    window.open(`${waLink}?text=${encodeURIComponent(message + `\n\nThe PDF has been downloaded and is ready to attach.`)}`, '_blank')
+    window.open(`${waLink}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer')
   }
 
   // ══ INVOICE SCREEN ════════════════════════════════════════════════════
