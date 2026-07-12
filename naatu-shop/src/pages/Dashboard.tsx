@@ -131,6 +131,7 @@ export default function Dashboard() {
   const [editingProd, setEditingProd] = useState<Product | null>(null)
   const [prodForm, setProdForm] = useState(emptyForm)
   const [newCat, setNewCat] = useState({ name_en: '', name_ta: '' })
+  const [editingCategoryId, setEditingCategoryId] = useState<string | number | null>(null)
   const [categoryNotice, setCategoryNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [categoryManagerOpen, setCategoryManagerOpen] = useState(false)
   const [coupons, setCoupons] = useState<DashboardCoupon[]>([])
@@ -1116,13 +1117,17 @@ export default function Dashboard() {
   const onAddCat = async (e: FormEvent) => {
     e.preventDefault()
     if (!newCat.name_en.trim()) return
-    const { error } = await supabase.from('categories').insert({ ...newCat, name_en: newCat.name_en.trim(), is_active: true })
+    const payload = { ...newCat, name_en: newCat.name_en.trim() }
+    const { error } = editingCategoryId === null
+      ? await supabase.from('categories').insert({ ...payload, is_active: true })
+      : await supabase.from('categories').update(payload).eq('id', editingCategoryId)
     if (error) {
       setCategoryNotice({ type: 'error', text: error.message || 'Could not add category.' })
       return
     }
     setNewCat({ name_en: '', name_ta: '' })
-    setCategoryNotice({ type: 'success', text: 'Category added successfully.' })
+    setEditingCategoryId(null)
+    setCategoryNotice({ type: 'success', text: editingCategoryId === null ? 'Category added successfully.' : 'Category updated successfully.' })
     await loadData()
   }
 
@@ -3215,7 +3220,10 @@ export default function Dashboard() {
                 <input className="w-36 px-4 py-3 bg-[#FAFAFA] border border-[#F3F4F6] focus:border-maroon-dark outline-none rounded-xl text-[13px] font-bold transition-colors shadow-sm"
                   placeholder={l('Tamil', 'à®¤à®®à®¿à®´à¯')} value={newCat.name_ta}
                   onChange={e => setNewCat(c => ({...c, name_ta: e.target.value}))} />
-                <button type="submit" className="px-5 py-3 bg-[#111111] hover:bg-[#333333] transition-colors shadow-sm text-white font-black rounded-xl text-[13px]">{l('Add', 'à®šà¯‡à®°à¯')}</button>
+                <button type="submit" className="px-5 py-3 bg-[#111111] hover:bg-[#333333] transition-colors shadow-sm text-white font-black rounded-xl text-[13px]">{editingCategoryId === null ? l('Add', 'à®šà¯‡à®°à¯') : 'Save'}</button>
+                {editingCategoryId !== null && (
+                  <button type="button" onClick={() => { setEditingCategoryId(null); setNewCat({ name_en: '', name_ta: '' }) }} className="px-3 py-3 text-[#6B7280] font-black rounded-xl text-[12px] hover:bg-[#F3F4F6]">Cancel</button>
+                )}
               </form>
               <div className="space-y-3">
                 {billingCategories.map(c => (
@@ -3228,6 +3236,7 @@ export default function Dashboard() {
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
+                      <button onClick={() => { setEditingCategoryId(c.id); setNewCat({ name_en: c.name_en, name_ta: c.name_ta || '' }); window.scrollTo({ top: 0, behavior: 'smooth' }) }} className="p-2 text-[#6B7280] hover:text-[#111111] hover:bg-[#F3F4F6] transition-colors rounded-lg" title="Edit category"><Edit2 size={16} /></button>
                       <button onClick={() => void moveCat(c, 'up')} className="p-2 text-[#6B7280] hover:text-[#111111] hover:bg-[#F3F4F6] transition-colors rounded-lg"><ArrowUp size={16} /></button>
                       <button onClick={() => void moveCat(c, 'down')} className="p-2 text-[#6B7280] hover:text-[#111111] hover:bg-[#F3F4F6] transition-colors rounded-lg"><ArrowDown size={16} /></button>
                       <button onClick={() => void toggleCat(c)} className={`p-2 rounded-lg transition-colors ${c.is_active ? 'text-amber-500 hover:bg-amber-50' : 'text-green-600 hover:bg-green-50'}`}><Power size={16} /></button>
