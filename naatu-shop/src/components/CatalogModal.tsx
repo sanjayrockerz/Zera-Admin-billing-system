@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { X, Search, ShoppingBag, Edit2, Trash2 } from 'lucide-react'
 import { useProductStore, type Product } from '../store/store'
 import { supabase } from '../lib/supabase'
@@ -9,6 +9,8 @@ interface CatalogModalProps {
   onAdd: (product: Product) => void
 }
 
+type CategoryOption = { id: string | number; name_en: string }
+
 export default function CatalogModal({ isOpen, onClose, onAdd }: CatalogModalProps) {
   const { fetchProducts, products } = useProductStore()
   const [search, setSearch] = useState('')
@@ -17,11 +19,32 @@ export default function CatalogModal({ isOpen, onClose, onAdd }: CatalogModalPro
   const [editForm, setEditForm] = useState({ name: '', category: '', price: '' })
   const [editLoading, setEditLoading] = useState(false)
   const [editError, setEditError] = useState('')
+  const [categoryOptions, setCategoryOptions] = useState<CategoryOption[]>([])
+
+  useEffect(() => {
+    let cancelled = false
+    const loadCategories = async () => {
+      const { data } = await supabase.from('categories').select('id, name_en').eq('is_active', true).order('sort_order')
+      if (!cancelled) setCategoryOptions((data || []) as CategoryOption[])
+    }
+    void loadCategories()
+    return () => { cancelled = true }
+  }, [])
 
   const categories = useMemo(() => {
     const cats = Array.from(new Set(products.filter(p => p.isActive).map(p => p.category))).filter(Boolean)
     return ['All', ...cats]
   }, [products])
+
+  const allCategoryOptions = useMemo(() => {
+    const merged = new Map<string, CategoryOption>()
+    categoryOptions.forEach(category => merged.set(category.name_en.trim().toLowerCase(), category))
+    products.filter(product => product.isActive && product.category.trim()).forEach(product => {
+      const key = product.category.trim().toLowerCase()
+      if (!merged.has(key)) merged.set(key, { id: product.categoryId || `product-category-${key}`, name_en: product.category.trim() })
+    })
+    return Array.from(merged.values()).sort((a, b) => a.name_en.localeCompare(b.name_en))
+  }, [categoryOptions, products])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -53,9 +76,11 @@ export default function CatalogModal({ isOpen, onClose, onAdd }: CatalogModalPro
     if (!editForm.price) { setEditError('Price is required'); return }
     setEditLoading(true)
     setEditError('')
+    const selectedCategory = allCategoryOptions.find(c => c.name_en === editForm.category)
     const { error } = await supabase.from('products').update({
       name: editForm.name.trim(),
       category: editForm.category.trim(),
+      category_id: selectedCategory?.id || null,
       price: Number(editForm.price),
     }).eq('id', editingProduct.id)
     if (error) { setEditError(error.message); setEditLoading(false); return }
@@ -95,9 +120,15 @@ export default function CatalogModal({ isOpen, onClose, onAdd }: CatalogModalPro
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[10px] font-black text-[#5F6D59] tracking-wider uppercase mb-1.5">Category</label>
-                  <input type="text" value={editForm.category}
+                  <select value={editForm.category}
                     onChange={e => setEditForm({...editForm, category: e.target.value})}
-                    className="w-full px-4 py-3 bg-[#F7F6F2] border border-[#EAD7B7]/60 rounded-xl focus:outline-none focus:border-[#8B2332] text-[13px] font-bold" />
+                    className="w-full px-4 py-3 bg-[#F7F6F2] border border-[#EAD7B7]/60 rounded-xl focus:outline-none focus:border-[#8B2332] text-[13px] font-bold">
+                    <option value="">Select category</option>
+                    {allCategoryOptions.map(category => <option key={category.id} value={category.name_en}>{category.name_en}</option>)}
+                    {!allCategoryOptions.some(category => category.name_en === editForm.category) && editForm.category && (
+                      <option value={editForm.category}>{editForm.category}</option>
+                    )}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-[#5F6D59] tracking-wider uppercase mb-1.5">Price (₹)</label>

@@ -270,6 +270,12 @@ export default function Dashboard() {
 
     // Billable = completed and NOT online_request
     const billableCompleted = completedOrders.filter(o => normalizeOrderType(o.order_type) !== 'online_request')
+    // The trend charts are fixed calendar views. The period selector filters
+    // KPIs/tables, but must not change the year/week bars underneath them.
+    const allBillableCompleted = orders
+      .filter(o => normalizeStatus(o.status) !== 'cancelled')
+      .filter(o => isCompletedStatus(o.status))
+      .filter(o => normalizeOrderType(o.order_type) !== 'online_request')
     // Channel is determined by order_mode. Older orders can use a different
     // order_type, so requiring exactly `pos_sale` hides valid online bills.
     const offlinePOS  = billableCompleted.filter(o => normalizeOrderMode(o.order_mode) === 'offline' && normalizeOrderType(o.order_type) !== 'manual_sale')
@@ -422,7 +428,7 @@ export default function Dashboard() {
     // Trend charts
     const chartYear = new Date().getFullYear()
     const monthlyRevenueMap = new Map<string, number>()
-    billableCompleted.forEach(o => {
+    allBillableCompleted.forEach(o => {
       const k = toLocalMonthKey(o.created_at)
       monthlyRevenueMap.set(k, (monthlyRevenueMap.get(k) || 0) + toNumber(o.total, 0))
     })
@@ -433,7 +439,7 @@ export default function Dashboard() {
     })
 
     const weeklyRevenueMap = new Map<string, number>()
-    billableCompleted.forEach(o => {
+    allBillableCompleted.forEach(o => {
       const k = toLocalDateKey(o.created_at)
       weeklyRevenueMap.set(k, (weeklyRevenueMap.get(k) || 0) + toNumber(o.total, 0))
     })
@@ -2025,7 +2031,7 @@ export default function Dashboard() {
                             formatter={(value) => formatCurrency(toNumber(value as number | string, 0))}
                             labelFormatter={(_, payload) => {
                               const point = payload?.[0]?.payload as { day?: string; date?: string } | undefined
-                              return point ? `${point.day || 'Day'} • ${point.date || ''}` : 'Weekly Revenue'
+                              return point ? `${point.day || 'Day'} - ${point.date || ''}` : 'Weekly Revenue'
                             }}
                           />
                           <Bar dataKey="revenue" fill="#2C392A" radius={[4, 4, 0, 0]} barSize={28} />
