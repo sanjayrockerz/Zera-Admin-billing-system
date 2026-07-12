@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf'
-import { BRAND_ADDRESS, BRAND_EMAIL, BRAND_EN, BRAND_PHONE_DISPLAY } from './brand'
+import { BRAND_ADDRESS, BRAND_EN, BRAND_PHONE_DISPLAY } from './brand'
 import { formatCurrency, formatQuantityDisplay, normalizeStructuredOrderItem } from './retail'
 
 export type InvoicePdfData = {
@@ -130,10 +130,6 @@ export function createInvoicePdf(data: InvoicePdfData): Blob {
   doc.setFontSize(8)
   doc.setTextColor(red)
   doc.text('THANK YOU FOR SHOPPING WITH US', pageWidth / 2, y + 8, { align: 'center' })
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(7)
-  doc.setTextColor(muted)
-  doc.text(`${BRAND_EMAIL}  |  ${BRAND_PHONE_DISPLAY}`, pageWidth / 2, y + 14, { align: 'center' })
   return doc.output('blob')
 }
 

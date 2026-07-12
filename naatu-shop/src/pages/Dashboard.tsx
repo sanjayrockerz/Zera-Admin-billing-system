@@ -3,7 +3,7 @@ import {
   BarChart2, Trash2, Edit2, List, ShoppingCart, LayoutDashboard,
   Box, AlertCircle, ArrowUp, ArrowDown, Power, Download, TrendingUp,
   Package, IndianRupee, Search, RefreshCw, ShieldCheck, ShieldOff, Trophy,
-  MessageCircle, ChevronDown, Eye, FileText, Lock, LockOpen,
+  MessageCircle, ChevronDown, Eye, FileText, Lock, LockOpen, Printer, MoreVertical,
 } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
@@ -38,7 +38,8 @@ type Category = { id: string | number; name_en: string; name_ta: string; is_acti
 type DashboardOrder = {
   id: string; invoice_no: string; customer_name: string; phone: string; address: string
   created_at: string; total: number; status: string; order_mode: string; order_type: string; user_id: string | null; items: unknown
-  coupon_code: string; discount_amount: number; delivery_charge: number
+  coupon_code: string; discount_amount: number; manual_discount_amount: number; delivery_charge: number
+  total_gst: number; payment_mode: string; invoice_pdf_url: string
 }
 type DashboardOrderItem = { order_id: string; product_name: string; quantity: number; line_total: number; is_manual?: boolean | null }
 type DashboardCoupon = {
@@ -134,6 +135,7 @@ export default function Dashboard() {
   const [editingCategoryId, setEditingCategoryId] = useState<string | number | null>(null)
   const [categoryNotice, setCategoryNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [categoryManagerOpen, setCategoryManagerOpen] = useState(false)
+  const [openCategoryMenuId, setOpenCategoryMenuId] = useState<string | number | null>(null)
   const [coupons, setCoupons] = useState<DashboardCoupon[]>([])
   const [couponForm, setCouponForm] = useState({ code: '', percentage: 10, expiry_date: '', usage_limit: '', min_order_value: '' })
   const [couponSaveError, setCouponSaveError] = useState('')
@@ -250,7 +252,11 @@ export default function Dashboard() {
     items: row.items,
     coupon_code: String(row.coupon_code || ''),
     discount_amount: toNumber(row.discount_amount, 0),
+    manual_discount_amount: toNumber(row.manual_discount_amount, 0),
     delivery_charge: toNumber(row.delivery_charge, 0),
+    total_gst: toNumber(row.total_gst ?? row.gst_amount, 0),
+    payment_mode: String(row.payment_mode || row.payment_method || ''),
+    invoice_pdf_url: String(row.invoice_pdf_url || ''),
   })
 
   // Analytics (date-aware)
@@ -284,6 +290,7 @@ export default function Dashboard() {
 
     // Revenue (WhatsApp never included)
     const completedRevenue   = billableCompleted.reduce((s, o) => s + toNumber(o.total, 0), 0)
+    const averageRevenuePerBill = billableCompleted.length > 0 ? completedRevenue / billableCompleted.length : 0
     const posRevenue         = offlinePOS.reduce((s, o) => s + toNumber(o.total, 0), 0)
     const onlinePosRevenue   = onlinePOS.reduce((s, o) => s + toNumber(o.total, 0), 0)
     const manualRevenue      = manualSales.reduce((s, o) => s + toNumber(o.total, 0), 0)
@@ -534,6 +541,7 @@ export default function Dashboard() {
 
     return {
       totalCompletedRevenue: completedRevenue,
+      averageRevenuePerBill,
       todaySales,
       todayCompletedOrdersCount,
       todayItemsSold,
@@ -604,7 +612,7 @@ export default function Dashboard() {
       const [cRes, oRes] = await Promise.all([
         supabase.from('categories').select('id, name_en, name_ta, is_active, sort_order').order('sort_order'),
         supabase.from('orders')
-          .select('id, invoice_no, customer_name, phone, address, created_at, total, status, order_mode, order_type, user_id, items, coupon_code, discount_amount, delivery_charge')
+          .select('id, invoice_no, customer_name, phone, address, created_at, total, status, order_mode, order_type, user_id, items, coupon_code, discount_amount, manual_discount_amount, delivery_charge, total_gst, gst_amount, payment_mode, payment_method, invoice_pdf_url')
           .order('created_at', { ascending: false })
           .limit(1000),
       ])
@@ -755,6 +763,7 @@ export default function Dashboard() {
     let downloadLink = ''
     try {
       downloadLink = await uploadInvoicePdf(file, order.invoice_no || order.id)
+      await supabase.from('orders').update({ invoice_pdf_url: downloadLink }).eq('id', order.id)
     } catch (err) {
       console.warn('Failed to upload invoice PDF, falling back to local download:', err)
     }
@@ -777,6 +786,43 @@ export default function Dashboard() {
     link.click()
     setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000)
     window.open(`${toWhatsAppUrl(order.phone)}?text=${encodeURIComponent(whatsappMessage)}`, '_blank', 'noopener,noreferrer')
+  }
+
+  const openOrderInvoice = async (order: DashboardOrder, mode: 'view' | 'download' | 'print') => {
+    if (order.invoice_pdf_url) {
+      const link = document.createElement('a')
+      link.href = order.invoice_pdf_url
+      if (mode === 'download') link.download = `Invoice-${order.invoice_no || order.id}.pdf`
+      if (mode === 'download') { link.click(); return }
+      const opened = window.open(order.invoice_pdf_url, '_blank', 'noopener,noreferrer')
+      if (mode === 'print') opened?.addEventListener('load', () => opened.print())
+      return
+    }
+    const preview = getOrderWhatsAppPreview(order)
+    if (!preview) { alert('This order has no invoice details available.'); return }
+    const file = invoicePdfFile({
+      invoiceNo: order.invoice_no || order.id,
+      date: order.created_at,
+      customerName: order.customer_name,
+      phone: order.phone,
+      address: order.address,
+      items: preview.items as unknown as Array<Record<string, unknown>>,
+      subtotal: preview.subtotal,
+      shipping: order.delivery_charge,
+      discountAmount: order.discount_amount,
+      manualDiscountAmount: order.manual_discount_amount,
+      gstAmount: order.total_gst,
+      paymentMode: order.payment_mode,
+      total: order.total,
+    })
+    const url = URL.createObjectURL(file)
+    if (mode === 'download') {
+      const link = document.createElement('a'); link.href = url; link.download = file.name; link.click()
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+      return
+    }
+    const opened = window.open(url, '_blank', 'noopener,noreferrer')
+    if (mode === 'print') opened?.addEventListener('load', () => opened.print())
   }
 
   const generateCouponCode = () => {
@@ -865,7 +911,7 @@ export default function Dashboard() {
   // trigger a full data reload more than once every 4 seconds.
   const debouncedLoadRef = useRef<(() => void) | null>(null)
   useEffect(() => {
-    debouncedLoadRef.current = debounce(() => void loadData(), 4000)
+    debouncedLoadRef.current = debounce(() => void loadData(), 350)
   }, [loadData])
 
   useEffect(() => {
@@ -1922,7 +1968,7 @@ export default function Dashboard() {
                     { label: 'TOTAL OFFLINE BILLS', helper: 'Walk-in POS orders',    value: analytics.offlineOrderCount,                    icon: <LayoutDashboard size={16} />, color: 'text-red-500',    bg: 'bg-red-50' },
                     { label: 'TOTAL ONLINE BILLS',  helper: 'Live completed online bills', value: analytics.onlineBillCount,               icon: <Box size={16} />,             color: 'text-blue-500',   bg: 'bg-blue-50' },
                     { label: 'TOTAL ITEMS SOLD',    helper: 'From completed bills',  value: Math.round(analytics.totalProductsSold),         icon: <Box size={16} />,             color: 'text-purple-500', bg: 'bg-purple-50' },
-                    { label: 'AVG ORDER VALUE',     helper: 'Per completed order',   value: formatCurrency(analytics.completedOrders > 0 ? analytics.totalCompletedRevenue / analytics.completedOrders : 0), icon: <IndianRupee size={16} />, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+                    { label: 'AVERAGE REVENUE PER BILL', helper: 'Average per Bill', value: formatCurrency(analytics.averageRevenuePerBill), icon: <IndianRupee size={16} />, color: 'text-emerald-500', bg: 'bg-emerald-50' },
                     { label: 'TOP PRODUCT',         helper: 'Most sold item',        value: analytics.bestProduct || '-',                    icon: <Trophy size={16} />,          color: 'text-pink-500',   bg: 'bg-pink-50' },
                   ].map((card, index) => (
                     <div key={index} className="bg-white rounded-card border border-borderLight p-5 shadow-soft">
@@ -2160,6 +2206,7 @@ export default function Dashboard() {
                             <th className="px-3 py-2.5 font-black text-left">Total</th>
                             <th className="px-3 py-2.5 font-black text-left">Time</th>
                             <th className="px-3 py-2.5 font-black text-left">Type</th>
+                            <th className="px-3 py-2.5 font-black text-left">Actions</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-[#EAD7B7]/20">
@@ -2173,6 +2220,11 @@ export default function Dashboard() {
                                 <td className="px-3 py-2.5 font-black text-[#2C392A]">{formatCurrency(toNumber(o.total, 0))}</td>
                                 <td className="px-3 py-2.5 text-[#5F6D59] whitespace-nowrap">{new Date(o.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</td>
                                 <td className="px-3 py-2.5"><span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${btClass}`}>{btLabel}</span></td>
+                                <td className="px-3 py-2.5">
+                                  <button onClick={() => void openOrderInvoice(o, 'view')} className="inline-flex items-center gap-1 rounded-lg border border-[#EAD7B7]/60 px-2 py-1.5 text-[11px] font-black text-[#2C392A] hover:bg-[#F7F6F2]" title="View Invoice">
+                                    <Eye size={13} /> View Invoice
+                                  </button>
+                                </td>
                               </tr>
                             )
                           })}
@@ -2645,6 +2697,12 @@ export default function Dashboard() {
                         <button onClick={() => navigate(`/invoice/${encodeURIComponent(o.invoice_no)}`)} className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl border border-[#EAD7B7]/60 px-3 text-[12px] font-black text-[#2C392A] transition-colors hover:bg-white" title="View Invoice">
                           <Eye size={14} /> View Invoice
                         </button>
+                        <button onClick={() => void openOrderInvoice(o, 'print')} className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl border border-[#EAD7B7]/60 px-3 text-[12px] font-black text-[#2C392A] transition-colors hover:bg-white" title="Print Invoice">
+                          <Printer size={14} /> Print
+                        </button>
+                        <button onClick={() => void openOrderInvoice(o, 'download')} className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl border border-[#EAD7B7]/60 px-3 text-[12px] font-black text-[#2C392A] transition-colors hover:bg-white" title="Download PDF">
+                          <Download size={14} /> PDF
+                        </button>
                         <button onClick={() => void sendOrderWhatsApp(o)} className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl bg-green-500 px-3 text-[12px] font-black text-white transition-colors hover:bg-green-600" title="Download PDF and open WhatsApp">
                           <MessageCircle size={14} /> WhatsApp PDF
                         </button>
@@ -2711,6 +2769,12 @@ export default function Dashboard() {
                             <div className="flex items-center gap-1">
                               <button onClick={() => navigate(`/invoice/${encodeURIComponent(o.invoice_no)}`)} className="rounded-lg p-1.5 text-[#2C392A] transition-colors hover:bg-[#F7F6F2]" title="View Invoice">
                                 <Eye size={14} />
+                              </button>
+                              <button onClick={() => void openOrderInvoice(o, 'print')} className="rounded-lg p-1.5 text-[#2C392A] transition-colors hover:bg-[#F7F6F2]" title="Print Invoice">
+                                <Printer size={14} />
+                              </button>
+                              <button onClick={() => void openOrderInvoice(o, 'download')} className="rounded-lg p-1.5 text-[#2C392A] transition-colors hover:bg-[#F7F6F2]" title="Download PDF">
+                                <Download size={14} />
                               </button>
                               <button onClick={() => void sendOrderWhatsApp(o)} className="rounded-lg p-1.5 text-green-600 transition-colors hover:bg-green-50" title="Download PDF and open WhatsApp">
                                 <MessageCircle size={14} />
@@ -2844,17 +2908,22 @@ export default function Dashboard() {
                         {cats.length === 0 ? (
                           <p className="px-2 py-1 text-[11px] text-[#6B7280]">No categories available.</p>
                         ) : billingCategories.map(c => (
-                          <div key={c.id} className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 hover:bg-red-50">
+                          <div key={c.id} className="relative flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 hover:bg-red-50">
                             <span className="truncate text-[12px] font-bold text-[#2C392A]">{c.name_en}</span>
                             <button
                               type="button"
-                              onClick={() => void deleteCat(c)}
-                              className="shrink-0 rounded-lg p-1.5 text-red-500 hover:bg-red-100 hover:text-red-700"
-                              aria-label={`Delete ${c.name_en}`}
-                              title={`Delete ${c.name_en}`}
+                              onClick={() => setOpenCategoryMenuId(id => id === c.id ? null : c.id)}
+                              className="shrink-0 rounded-lg p-1.5 text-[#6B7280] hover:bg-white hover:text-[#111111]"
+                              aria-label={`Actions for ${c.name_en}`}
                             >
-                              <Trash2 size={14} />
+                              <MoreVertical size={14} />
                             </button>
+                            {openCategoryMenuId === c.id && (
+                              <div className="absolute right-2 top-9 z-20 min-w-28 rounded-xl border border-[#EAD7B7]/60 bg-white p-1 shadow-lg">
+                                <button type="button" onClick={() => { setEditingCategoryId(c.id); setNewCat({ name_en: c.name_en, name_ta: c.name_ta || '' }); setOpenCategoryMenuId(null) }} className="block w-full rounded-lg px-3 py-2 text-left text-[11px] font-bold text-[#2C392A] hover:bg-[#F7F6F2]">Edit / Rename</button>
+                                <button type="button" onClick={() => { setOpenCategoryMenuId(null); void deleteCat(c) }} className="block w-full rounded-lg px-3 py-2 text-left text-[11px] font-bold text-red-600 hover:bg-red-50">Delete</button>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>

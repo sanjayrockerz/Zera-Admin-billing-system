@@ -13,6 +13,8 @@ import { Invoice } from '../components/Invoice'
 import CatalogModal from '../components/CatalogModal'
 import AddProductModal from '../components/AddProductModal'
 import { printThermalReceipt } from '../lib/thermalPrint'
+import { invoicePdfFile } from '../lib/invoicePdf'
+import { uploadInvoicePdf } from '../lib/storage'
 import { createOrderWithStock } from '../services/orderService'
 import {
   buildStructuredOrderItem,
@@ -61,6 +63,7 @@ type InvoiceSnap = {
   amountReceived: number
   balanceReturned: number
   paymentMode: string
+  invoicePdfUrl?: string
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -318,6 +321,12 @@ export default function Pos(props: PosProps = {}) {
     setManualDiscountValue('')
     setManualDiscountType('flat')
     setError('')
+    setShipping('0')
+    setBillGstEnabled(false)
+    setGstInput('')
+    setGstType('percent')
+    setOrderMode('offline')
+    setMobilePanelView('catalogue')
     searchRef.current?.focus()
   }
 
@@ -424,7 +433,7 @@ export default function Pos(props: PosProps = {}) {
         totalGst,
         gstEnabled: billGstEnabled,
       })
-      setInvoice({
+      const createdInvoice: InvoiceSnap = {
         id: created.orderId,
         invoiceNo: created.invoiceNo,
         orderType: getOrderType(),
@@ -445,7 +454,9 @@ export default function Pos(props: PosProps = {}) {
         amountReceived: cashReceivedNum,
         balanceReturned: balanceToReturn,
         paymentMode: orderMode === 'online' ? 'Online' : cashReceivedNum > 0 ? 'Cash' : 'POS',
-      })
+      }
+      setInvoice(createdInvoice)
+      void persistInvoicePdf(createdInvoice)
       setItems([])
       setCustomer({ name: '', phone: '', address: '' })
       void fetchProducts()
@@ -466,7 +477,7 @@ export default function Pos(props: PosProps = {}) {
 
   const sendPosWhatsApp = (inv: InvoiceSnap) => {
     const waLink = toWhatsAppUrl(inv.phone || customer.phone || '')
-    const invoiceUrl = `${window.location.origin}/invoice/${inv.invoiceNo}`
+    const invoiceUrl = inv.invoicePdfUrl || `${window.location.origin}/invoice/${inv.invoiceNo}`
     const message = buildProfessionalWhatsAppMessage({
       customerName: inv.customerName,
       phone: inv.phone,
@@ -488,6 +499,54 @@ export default function Pos(props: PosProps = {}) {
       total: inv.total,
     }) + `\n\n📄 Invoice PDF: ${invoiceUrl}`
     window.open(`${waLink}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer')
+  }
+
+  const persistInvoicePdf = async (inv: InvoiceSnap) => {
+    try {
+      const file = invoicePdfFile({
+        invoiceNo: inv.invoiceNo,
+        date: inv.date,
+        customerName: inv.customerName,
+        phone: inv.phone,
+        address: inv.address,
+        items: inv.items.map(item => ({ name: item.name, qty: item.qty, unit: item.selectedUnit, price: item.basePrice, line_total: item.lineTotal })),
+        subtotal: inv.subtotal,
+        shipping: inv.shipping,
+        discountAmount: inv.couponDiscount,
+        manualDiscountAmount: inv.manualDiscountAmount,
+        gstAmount: inv.gstAmount,
+        couponCode: inv.couponCode,
+        paymentMode: inv.paymentMode,
+        total: inv.total,
+      })
+      const url = await uploadInvoicePdf(file, inv.invoiceNo)
+      await supabase.from('orders').update({
+        invoice_pdf_url: url,
+        payment_mode: inv.paymentMode,
+        total_gst: inv.gstAmount,
+        total: inv.total,
+      }).eq('id', inv.id)
+      setInvoice(current => current?.id === inv.id ? { ...current, invoicePdfUrl: url } : current)
+    } catch (err) {
+      console.warn('Invoice PDF could not be stored:', err)
+    }
+  }
+
+  const printReceipt = (inv: InvoiceSnap) => {
+    printThermalReceipt({
+      invoiceNo: inv.invoiceNo,
+      date: inv.date,
+      customerName: inv.customerName,
+      phone: inv.phone,
+      items: inv.items.map(item => ({ name: item.name, qty: item.qty, unit: item.selectedUnit, price: item.basePrice, line_total: item.lineTotal })),
+      subtotal: inv.subtotal,
+      shipping: inv.shipping,
+      couponDiscount: inv.couponDiscount,
+      manualDiscount: inv.manualDiscountAmount,
+      totalGst: inv.gstAmount,
+      total: inv.total,
+    })
+    window.setTimeout(() => window.print(), 250)
   }
 
   // ══ INVOICE SCREEN ════════════════════════════════════════════════════
@@ -550,33 +609,13 @@ export default function Pos(props: PosProps = {}) {
 
           {/* Actions */}
           <div className="grid grid-cols-3 gap-3">
-            <button onClick={() => sendPosWhatsApp(invoice)}
-              className="flex items-center justify-center gap-2 py-3 rounded-xl bg-green-500 hover:bg-green-600 text-white font-bold text-sm transition-colors">
-              <MessageCircle size={16} /> WhatsApp
-            </button>
-            <button onClick={() => {
-              printThermalReceipt({
-                invoiceNo: invoice.invoiceNo,
-                date: invoice.date,
-                customerName: invoice.customerName,
-                phone: invoice.phone,
-                items: invoiceItems.map(item => ({
-                  name: item.name,
-                  qty: item.qty,
-                  unit: item.unit,
-                  price: item.price,
-                  line_total: item.line_total
-                })),
-                subtotal: invoice.subtotal,
-                shipping: invoice.shipping,
-                couponDiscount: invoice.couponDiscount || 0,
-                manualDiscount: invoice.manualDiscountAmount || 0,
-                totalGst: invoice.gstAmount || 0,
-                total: invoice.total
-              })
-            }}
+            <button onClick={() => printReceipt(invoice)}
               className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-sand hover:border-sageDark text-textMain font-bold text-sm transition-colors">
               <Printer size={16} /> {l('Print Receipt', 'ரசீது அச்சிடு')}
+            </button>
+            <button onClick={() => sendPosWhatsApp(invoice)}
+              className="flex items-center justify-center gap-2 py-3 rounded-xl bg-green-500 hover:bg-green-600 text-white font-bold text-sm transition-colors">
+              <MessageCircle size={16} /> WhatsApp Invoice
             </button>
             <button onClick={clearAll}
               className="flex items-center justify-center gap-2 py-3 rounded-xl bg-sageDark hover:bg-sageDeep text-white font-bold text-sm transition-colors">

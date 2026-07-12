@@ -37,6 +37,7 @@ export interface InvoiceProps {
   manualDiscountAmount?: number
   gstAmount?: number
   paymentMode?: string
+  onPrintReceipt?: () => void
 }
 
 export const Invoice: React.FC<InvoiceProps> = ({
@@ -57,6 +58,7 @@ export const Invoice: React.FC<InvoiceProps> = ({
   manualDiscountAmount = 0,
   gstAmount = 0,
   paymentMode,
+  onPrintReceipt,
 }) => {
   const dateStr = (() => {
     try { return new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) }
@@ -230,7 +232,30 @@ export const Invoice: React.FC<InvoiceProps> = ({
       <div
         style={{
           marginTop: 40, paddingTop: 20, borderTop: '1px dashed #d0d0d0',
-          display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center',
+        }}
+      >
+        <div style={{ fontSize: 13, fontWeight: 800, color: '#2d5a27' }}>Thank you for shopping!</div>
+        {onPrintReceipt && (
+          <button
+            type="button"
+            onClick={onPrintReceipt}
+            className="print:hidden"
+            style={{
+              marginTop: 16, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              border: 0, borderRadius: 999, padding: '10px 20px',
+              background: '#2d5a27', color: '#fff', fontWeight: 700, cursor: 'pointer',
+            }}
+          >
+            Print Receipt
+          </button>
+        )}
+      </div>
+
+      <div
+        style={{
+          marginTop: 40, paddingTop: 20, borderTop: '1px dashed #d0d0d0',
+          display: 'none',
         }}
       >
         <div>

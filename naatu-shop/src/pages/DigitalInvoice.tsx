@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import { Invoice } from '../components/Invoice'
-import { Printer, ArrowLeft, Receipt, MessageCircle } from 'lucide-react'
+import { Printer, ArrowLeft, MessageCircle } from 'lucide-react'
 import { printThermalReceipt } from '../lib/thermalPrint'
 import { invoicePdfFile } from '../lib/invoicePdf'
 import { uploadInvoicePdf } from '../lib/storage'
@@ -165,6 +165,28 @@ const invoiceItems = (Array.isArray(invoice.items) ? invoice.items : [])
     window.open(`${toWhatsAppUrl(invoice.phone)}?text=${encodeURIComponent(whatsappMessage)}`, '_blank', 'noopener,noreferrer')
   }
 
+  const printReceipt = () => {
+    const subtotal = invoice.total - (invoice.delivery_charge || 0) + (invoice.discount_amount || 0)
+    printThermalReceipt({
+      invoiceNo: invoice.invoice_no,
+      date: invoice.created_at,
+      customerName: invoice.customer_name,
+      phone: invoice.phone,
+      items: (invoice.items || []).map((item: any) => ({
+        name: item.name || item.product_name,
+        qty: item.qty || item.quantity,
+        unit: item.unit,
+        price: item.price || item.base_price || 0,
+        line_total: item.line_total
+      })),
+      subtotal,
+      shipping: invoice.delivery_charge || 0,
+      couponDiscount: invoice.discount_amount || 0,
+      totalGst: invoice.total_gst || 0,
+      total: invoice.total
+    })
+  }
+
   return (
     <div className="min-h-screen bg-[#f9faf6] font-sans pb-12 print:bg-white print:pb-0">
       {/* Top action bar */}
@@ -184,32 +206,6 @@ const invoiceItems = (Array.isArray(invoice.items) ? invoice.items : [])
             className="flex items-center gap-2 bg-green-500 text-white px-5 py-2 rounded-full font-bold text-sm shadow-md hover:bg-green-600 transition-colors"
           >
             <MessageCircle size={16} /> WhatsApp
-          </button>
-          <button
-            onClick={() => {
-              const subtotal = invoice.total - (invoice.delivery_charge || 0) + (invoice.discount_amount || 0)
-              printThermalReceipt({
-                invoiceNo: invoice.invoice_no,
-                date: invoice.created_at,
-                customerName: invoice.customer_name,
-                phone: invoice.phone,
-                items: (invoice.items || []).map((item: any) => ({
-                  name: item.name || item.product_name,
-                  qty: item.qty || item.quantity,
-                  unit: item.unit,
-                  price: item.price || item.base_price || 0,
-                  line_total: item.line_total
-                })),
-                subtotal: subtotal,
-                shipping: invoice.delivery_charge || 0,
-                couponDiscount: invoice.discount_amount || 0,
-                totalGst: invoice.total_gst || 0,
-                total: invoice.total
-              })
-            }}
-            className="flex items-center gap-2 bg-sageDark text-white px-5 py-2 rounded-full font-bold text-sm shadow-md hover:bg-sageDeep transition-colors"
-          >
-            <Receipt size={16} /> Print Receipt
           </button>
         </div>
       </div>
@@ -232,6 +228,7 @@ const invoiceItems = (Array.isArray(invoice.items) ? invoice.items : [])
             total={invoice.total}
             status={invoice.status}
             paymentMode={invoice.payment_mode || invoice.payment_method}
+            onPrintReceipt={printReceipt}
           />
         </div>
       </div>
